@@ -16,6 +16,8 @@ PlaylistItem::PlaylistItem(const std::string& path)
 {
 	m_path = path;
 	m_name = basename((char*)path.c_str());
+	if (m_name.find_last_of(".") != std::string::npos)
+		m_name.erase(m_name.find_last_of("."), std::string::npos);
 	m_uuid = uuidgen();
 }
 
