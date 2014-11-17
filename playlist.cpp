@@ -3,15 +3,20 @@
 #include <uuid/uuid.h>
 #include <random>
 
-PlaylistItem::PlaylistItem(const std::string& path)
+std::string uuidgen()
 {
-	m_path = path;
-	m_name = basename((char*)path.c_str());
 	uuid_t out;
 	uuid_generate(out);
 	uuid_string_t str;
 	uuid_unparse(out, str);
-	m_uuid = str;
+	return str;
+}
+
+PlaylistItem::PlaylistItem(const std::string& path)
+{
+	m_path = path;
+	m_name = basename((char*)path.c_str());
+	m_uuid = uuidgen();
 }
 
 const std::string& PlaylistItem::getName() const
@@ -34,11 +39,13 @@ Playlist::Playlist()
 , m_repeatall(false)
 , m_shuffle(false)
 {
+	m_uuid = uuidgen();
 }
 
 void Playlist::insert(const PlaylistItem& item)
 {
 	m_items.push_back(item);
+	m_uuid = uuidgen();
 }
 
 bool Playlist::remove(const std::string& uuid)
@@ -47,7 +54,11 @@ bool Playlist::remove(const std::string& uuid)
 			[&uuid](PlaylistItem const& item) {
 				return item.getUUID() == uuid;
 			});
+	if (ptr == m_items.end())
+		return false;
+
 	m_items.erase(ptr, m_items.end());
+	m_uuid = uuidgen();
 	return true;
 }
 
@@ -110,17 +121,28 @@ const std::vector<PlaylistItem>& Playlist::getTracks() const
 	return m_items;
 }
 
+const std::string& Playlist::getUUID() const
+{
+	return m_uuid;
+}
+
 void Playlist::setRepeat(bool value)
 {
+	if (m_repeat != value)
+		m_uuid = uuidgen();
 	m_repeat = value;
 }
 
 void Playlist::setRepeatAll(bool value)
 {
+	if (m_repeatall != value)
+		m_uuid = uuidgen();
 	m_repeatall = value;
 }
 
 void Playlist::setShuffle(bool value)
 {
+	if (m_shuffle != value)
+		m_uuid = uuidgen();
 	m_shuffle = value;
 }

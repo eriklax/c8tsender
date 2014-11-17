@@ -30,6 +30,7 @@ class Playlist {
 		bool getRepeatAll() const;
 		bool getShuffle() const;
 		const std::vector<PlaylistItem>& getTracks() const;
+		const std::string& getUUID() const;
 
 		void setRepeat(bool value);
 		void setRepeatAll(bool value);
@@ -39,6 +40,7 @@ class Playlist {
 		bool m_repeatall;
 		bool m_shuffle;
 		std::vector<PlaylistItem> m_items;
+		std::string m_uuid;
 };
 
 #endif

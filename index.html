@@ -34,6 +34,7 @@
 		</style>
 		<script type="text/javascript">
 			var streamInfoTimer = null;
+			var playlistUUID = null;
 			function reloadPlaylist() {
 				$.ajax({
 					dataType: 'json',
@@ -41,28 +42,29 @@
 				})
 				.done(function (playlist) {
 					$('#playlist').empty();
+					if (playlist.shuffle) $("#shuffle").addClass('btn-success');
+					else $("#shuffle").removeClass('btn-success');
+					if (playlist.repeat) $("#repeat").addClass('btn-success');
+					else $("#repeat").removeClass('btn-success');
+					if (playlist.repeatall) $("#repeatall").addClass('btn-success');
+					else $("#repeatall").removeClass('btn-success');
+					playlistUUID = playlist.uuid;
 					for (i = 0; i < playlist.tracks.length; ++i)
 					{
 						var track = playlist.tracks[i];
-						var td = $('<div>/');
-						td.addClass('playlistitem');
-						td.text(track.name);
-						td.data('uuid', track.uuid);
-						td.on('click', function() {
+						var div = $('<div>/');
+						div.addClass('playlistitem');
+						div.text(track.name);
+						div.data('uuid', track.uuid);
+						div.on('click', function() {
 							var uuid = $(this).data('uuid');
 							$.ajax({
 								dataType: 'json',
 								url: '/play/' + uuid
 							});
 						});
-						$('#playlist').append(td);
+						$('#playlist').append(div);
 					}
-					if (playlist.shuffle) $("#shuffle").addClass('btn-success');
-						else $("#shuffle").removeClass('btn-success');
-					if (playlist.repeat) $("#repeat").addClass('btn-success');
-						else $("#repeat").removeClass('btn-success');
-					if (playlist.repeatall) $("#repeatall").addClass('btn-success');
-						else $("#repeat").removeClass('btn-success');
 					if (streamInfoTimer == null)
 						streamInfo();
 				})
@@ -75,14 +77,21 @@
 			function streamInfo() {
 				$.ajax({
 					dataType: 'json',
-					url: '/streamuuid'
+					url: '/streaminfo'
 				})
 				.done(function (obj) {
+					if (obj.playlist != playlistUUID) {
+						clearTimeout(streamInfoTimer);
+						streamInfoTimer = null;
+						reloadPlaylist();
+						return;
+					}
 					var rows = $('#playlist div').removeClass('highlight').filterByData('uuid', obj.uuid);
 					$(rows[0]).addClass('highlight');
+					streamInfoTimer = setTimeout(streamInfo, 1000);
 				})
-				.always(function () {
-					streamInfoTimer = setTimeout(streamInfo, 3000);
+				.error(function () {
+					streamInfoTimer = setTimeout(streamInfo, 1000);
 				});
 			}
 			$(document).ready(function() {

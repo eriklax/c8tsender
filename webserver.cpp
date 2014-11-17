@@ -181,10 +181,11 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 			return mhd_queue_json(connection, 500, json);
 		}
 	}
-	if (strcmp(url, "/streamuuid") == 0)
+	if (strcmp(url, "/streaminfo") == 0)
 	{
 		Json::Value json;
 		json["uuid"] = m_sender.getUUID();
+		json["playlist"] = m_playlist.getUUID();
 		return mhd_queue_json(connection, MHD_HTTP_OK, json);
 	}
 	if (strcmp(url, "/pause") == 0)
@@ -208,6 +209,7 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 	if (strcmp(url, "/playlist") == 0)
 	{
 		Json::Value json;
+		json["uuid"] = m_playlist.getUUID();
 		json["repeat"] = m_playlist.getRepeat();
 		json["repeatall"] = m_playlist.getRepeatAll();
 		json["shuffle"] = m_playlist.getShuffle();
