@@ -41,7 +41,7 @@ if __name__ == '__main__':
            playFile = True
        if os.path.isdir(f):
            tree(f)
-    if uuid and playFile:
+    if uuid and playFile and not queue_only:
         conn = httplib.HTTPConnection('127.0.0.1', 8080)
         conn.request('GET', '/play/' + uuid)
         conn.getresponse()
