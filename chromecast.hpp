@@ -20,6 +20,7 @@ class ChromeCast {
 		void pause();
 		void stop();
 
+		std::string uuid;
 		std::string getSocketName() const;
 	private:
 		Json::Value send(const std::string& namespace_, const Json::Value& payload);
