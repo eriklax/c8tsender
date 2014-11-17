@@ -1,0 +1,135 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap-theme.min.css">
+		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.0.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+		<title>c8t playlist</title>
+		<style type="text/css">
+			.playlistitem {
+				width: 100%;
+				text-overflow: ellipsis;
+				overflow: hidden;
+				white-space: nowrap;
+				border-top: 1px solid #ddd;
+				padding: 8px;
+			}
+			.playlistitem:first-child {
+				border-top: 2px solid #ddd;
+			}
+			.playlistitem:hover {
+				background-color: #ecf0f1;
+			}
+			.playlistitem {
+				cursor: pointer;
+				white-space: nowrap;
+			}
+			.playlistitem.highlight {
+				color: #d35400;
+				font-weight: bold;
+			}
+		</style>
+		<script type="text/javascript">
+			var streamInfoTimer = null;
+			function reloadPlaylist() {
+				$.ajax({
+					dataType: 'json',
+					url: '/playlist'
+				})
+				.done(function (playlist) {
+					$('#playlist').empty();
+					for (i = 0; i < playlist.tracks.length; ++i)
+					{
+						var track = playlist.tracks[i];
+						var td = $('<div>/');
+						td.addClass('playlistitem');
+						td.text(track.name);
+						td.data('uuid', track.uuid);
+						td.on('click', function() {
+							var uuid = $(this).data('uuid');
+							$.ajax({
+								dataType: 'json',
+								url: '/play/' + uuid
+							});
+						});
+						$('#playlist').append(td);
+					}
+					if (playlist.shuffle) $("#shuffle").addClass('btn-success');
+						else $("#shuffle").removeClass('btn-success');
+					if (playlist.repeat) $("#repeat").addClass('btn-success');
+						else $("#repeat").removeClass('btn-success');
+					if (playlist.repeatall) $("#repeatall").addClass('btn-success');
+						else $("#repeat").removeClass('btn-success');
+					if (streamInfoTimer == null)
+						streamInfo();
+				})
+			}
+			$.fn.filterByData = function(prop, val) {
+				return this.filter(
+						function() { return $(this).data(prop)===val; }
+						);
+			}
+			function streamInfo() {
+				$.ajax({
+					dataType: 'json',
+					url: '/streamuuid'
+				})
+				.done(function (obj) {
+					var rows = $('#playlist td').removeClass('highlight').filterByData('uuid', obj.uuid);
+					$(rows[0]).addClass('highlight');
+				})
+				.always(function () {
+					streamInfoTimer = setTimeout(streamInfo, 3000);
+				});
+			}
+			$(document).ready(function() {
+				reloadPlaylist();
+				$('#reload').on('click', function() { reloadPlaylist(); });
+				$('#pause').on('click', function() { $.ajax({ dataType: 'json', url: '/pause' }) });
+				$('#resume').on('click', function() { $.ajax({ dataType: 'json', url: '/resume' }) });
+				$('#stop').on('click', function() { $.ajax({ dataType: 'json', url: '/stop' }) });
+				$('#next').on('click', function() { $.ajax({ dataType: 'json', url: '/next' }) });
+				$('#shuffle').on('click', function() {
+					$.ajax({ dataType: 'json', url: '/playlist/shuffle/' + ($(this).hasClass('btn-success')?'0':'1') })
+					$(this).toggleClass('btn-success');
+				});
+				$('#repeat').on('click', function() {
+					$.ajax({ dataType: 'json', url: '/playlist/repeat/' + ($(this).hasClass('btn-success')?'0':'1') })
+					$(this).toggleClass('btn-success');
+				});
+				$('#repeatall').on('click', function() {
+					$.ajax({ dataType: 'json', url: '/playlist/repeatall/' + ($(this).hasClass('btn-success')?'0':'1') })
+					$(this).toggleClass('btn-success');
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<div class="container">
+			<p>
+				<div class="btn-group">
+					<button type="button" class="glyphicon glyphicon-play btn btn-primary btn-sm" id="resume" title="Resume"></button>
+					<button type="button" class="glyphicon glyphicon-pause btn btn-primary btn-sm" id="pause" title="Pause"></button>
+					<button type="button" class="glyphicon glyphicon-stop btn btn-primary btn-sm" id="stop" title="Stop"></button>
+				</div>
+				<div class="btn-group">
+					<button type="button" class="glyphicon glyphicon-step-forward btn btn-primary btn-sm" id="next" title="Next"></button>
+				</div>
+				<div class="btn-group">
+					<button type="button" class="glyphicon glyphicon-random btn btn-sm" id="shuffle" title="Shuffle"></button>
+					<button type="button" class="glyphicon glyphicon-repeat btn btn-sm" id="repeat" title="Repeat"></button>
+					<button type="button" class="glyphicon glyphicon-retweet btn btn-sm" id="repeatall" title="Repeat all"></button>
+				</div>
+				<div class="btn-group pull-right">
+					<button type="button" class="glyphicon glyphicon-refresh btn btn-info btn-sm" id="reload" title="Reload playlist"></button>
+				</div>
+			</p>
+			<div id="playlist">
+				<!-- playlist filled by ajax -->
+			</div>
+		</div>
+	</body>
+</html>
