@@ -23,8 +23,8 @@ class Playlist {
 
 		void insert(const PlaylistItem& item);
 		bool remove(const std::string& uuid);
-		PlaylistItem getTrack(const std::string& uuid);
-		PlaylistItem getNextTrack(const std::string& uuid);
+		PlaylistItem getTrack(const std::string& uuid) const;
+		PlaylistItem getNextTrack(const std::string& uuid) const;
 
 		bool getRepeat() const;
 		bool getRepeatAll() const;
