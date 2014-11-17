@@ -2,6 +2,7 @@
 import os, sys, time, httplib, json
 
 uuid = None
+queue_only = queue_only if 'queue_only' in locals() else False
 
 def addtoplaylist(file):
 	global uuid
