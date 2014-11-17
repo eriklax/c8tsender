@@ -108,7 +108,7 @@ void ChromeCast::load(const std::string& url, const std::string& title, const st
 	msg["media"]["contentId"] = url;
 	msg["media"]["streamType"] = "buffered";
 	msg["media"]["contentType"] = "video/x-matroska";
-	msg["media"]["customData"] = uuid;
+	msg["media"]["customData"]["uuid"] = uuid;
 	msg["media"]["metadata"]["title"] = title;
 	msg["autoplay"] = true;
 	msg["currentTime"] = 0;
@@ -284,16 +284,25 @@ void ChromeCast::_read()
 				if (response.isMember("status") &&
 					response["status"].isValidIndex(0u))
 				{
-					std::string customdata;
+					std::string uuid = m_uuid;
 					Json::Value& status = response["status"][0u];
+					if (status["playerState"] == "IDLE")
+						m_uuid = "";
+					if (status["playerState"] == "BUFFERING")
+						uuid = m_uuid = status["media"]["customData"]["uuid"].asString();
 					if (m_mediaStatusCallback)
 						m_mediaStatusCallback(status["playerState"].asString(),
 								status["idleReason"].asString(),
-								status["media"]["customData"].asString());
+								uuid);
 				}
 			}
 		}
 	}
+}
+
+const std::string& ChromeCast::getUUID() const
+{
+	return m_uuid;
 }
 
 std::string ChromeCast::getSocketName() const

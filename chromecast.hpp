@@ -20,7 +20,7 @@ class ChromeCast {
 		void pause();
 		void stop();
 
-		std::string uuid;
+		const std::string& getUUID() const;
 		std::string getSocketName() const;
 	private:
 		Json::Value send(const std::string& namespace_, const Json::Value& payload);
@@ -32,6 +32,7 @@ class ChromeCast {
 		std::thread m_tread;
 		std::map<unsigned int, std::pair<std::condition_variable*, Json::Value>> m_wait;
 
+		std::string m_uuid;
 		std::string m_session_id;
 		unsigned int m_media_session_id;
 		unsigned int _request_id();

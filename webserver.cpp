@@ -155,7 +155,6 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 	{
 		try {
 			PlaylistItem track = m_playlist.getTrack(url + 6);
-			m_sender.uuid = track.getUUID();
 			m_sender.load(
 					"http://" + m_sender.getSocketName() + ":8080/stream/" + track.getUUID(),
 					track.getName(), track.getUUID());
@@ -170,8 +169,7 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 	if (strcmp(url, "/next") == 0)
 	{
 		try {
-			PlaylistItem track = m_playlist.getNextTrack(m_sender.uuid);
-			m_sender.uuid = track.getUUID();
+			PlaylistItem track = m_playlist.getNextTrack(m_sender.getUUID());
 			m_sender.load(
 					"http://" + m_sender.getSocketName() + ":8080/stream/" + track.getUUID(),
 					track.getName(), track.getUUID());
@@ -186,7 +184,7 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 	if (strcmp(url, "/streamuuid") == 0)
 	{
 		Json::Value json;
-		json["uuid"] = m_sender.uuid;
+		json["uuid"] = m_sender.getUUID();
 		return mhd_queue_json(connection, MHD_HTTP_OK, json);
 	}
 	if (strcmp(url, "/pause") == 0)
