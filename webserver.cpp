@@ -152,54 +152,74 @@ int Webserver::POST_playlist(struct MHD_Connection* connection, const std::strin
 	if (!isPrivileged(connection))
 		return mhd_queue_json(connection, 403, Json::Value());
 
-	PlaylistItem track(data);
-	m_playlist.insert(track);
-
 	Json::Value json;
-	json["uuid"] = track.getUUID();
+	{
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
+		PlaylistItem track(data);
+		m_playlist.insert(track);
+
+		json["uuid"] = track.getUUID();
+	}
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 
 int Webserver::GET_playlist(struct MHD_Connection* connection)
 {
 	Json::Value json;
-	json["uuid"] = m_playlist.getUUID();
-	json["repeat"] = m_playlist.getRepeat();
-	json["repeatall"] = m_playlist.getRepeatAll();
-	json["shuffle"] = m_playlist.getShuffle();
-	Json::Value tracklist(Json::arrayValue);
-	for (auto& track : m_playlist.getTracks())
 	{
-		Json::Value t;
-		t["name"] = track.getName();
-		t["uuid"] = track.getUUID();
-		tracklist.append(t);
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
+		json["uuid"] = m_playlist.getUUID();
+		json["repeat"] = m_playlist.getRepeat();
+		json["repeatall"] = m_playlist.getRepeatAll();
+		json["shuffle"] = m_playlist.getShuffle();
+		Json::Value tracklist(Json::arrayValue);
+		for (auto& track : m_playlist.getTracks())
+		{
+			Json::Value t;
+			t["name"] = track.getName();
+			t["uuid"] = track.getUUID();
+			tracklist.append(t);
+		}
+		json["tracks"] = tracklist;
 	}
-	json["tracks"] = tracklist;
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 
 int Webserver::GET_playlist_repeat(struct MHD_Connection* connection, bool value)
 {
-	m_playlist.setRepeat(value);
 	Json::Value json;
-	json["repeat"] = m_playlist.getRepeat();
+	{
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
+		m_playlist.setRepeat(value);
+		json["repeat"] = m_playlist.getRepeat();
+	}
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 
 int Webserver::GET_playlist_repeatall(struct MHD_Connection* connection, bool value)
 {
-	m_playlist.setRepeatAll(value);
 	Json::Value json;
-	json["repeatall"] = m_playlist.getRepeatAll();
+	{
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
+		m_playlist.setRepeatAll(value);
+		json["repeatall"] = m_playlist.getRepeatAll();
+	}
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 
 int Webserver::GET_playlist_shuffle(struct MHD_Connection* connection, bool value)
 {
-	m_playlist.setShuffle(value);
 	Json::Value json;
-	json["shuffle"] = m_playlist.getShuffle();
+	{
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
+		m_playlist.setShuffle(value);
+		json["shuffle"] = m_playlist.getShuffle();
+	}
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 
@@ -223,34 +243,43 @@ int Webserver::GET_stop(struct MHD_Connection* connection)
 
 int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uuid)
 {
+	std::string name;
 	try {
-		PlaylistItem track = m_playlist.getTrack(uuid);
-		m_sender.load(
-				"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
-				track.getName(), track.getUUID());
-		return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
+		const PlaylistItem& track = m_playlist.getTrack(uuid);
+		name = track.getName();
 	} catch (std::runtime_error& e) {
 		Json::Value json;
 		json["error"] = e.what();
 		return mhd_queue_json(connection, 500, json);
 	}
+	m_sender.load(
+			"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + uuid,
+			name, uuid);
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
 int Webserver::GET_next(struct MHD_Connection* connection)
 {
+	Json::Value json;
+	std::string name, uuid;
 	try {
-		PlaylistItem track = m_playlist.getNextTrack(m_sender.getUUID());
-		m_sender.load(
-				"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
-				track.getName(), track.getUUID());
-		Json::Value json;
-		json["uuid"] = track.getUUID();
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
+		const PlaylistItem& track = m_playlist.getNextTrack(m_sender.getUUID());
+		name = track.getName();
+		uuid = track.getUUID();
+		json["uuid"] = uuid;
 	} catch (std::runtime_error& e) {
 		Json::Value json;
 		json["error"] = e.what();
 		return mhd_queue_json(connection, 500, json);
 	}
+	m_sender.load(
+			"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + uuid,
+			name, uuid);
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 
 struct mhd_forkctx
@@ -282,7 +311,8 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 {
 	std::string path;
 	try {
-		PlaylistItem track = m_playlist.getTrack(uuid);
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+		const PlaylistItem& track = m_playlist.getTrack(uuid);
 		path = track.getPath();
 	} catch (std::runtime_error& e) {
 		Json::Value json;
@@ -328,6 +358,8 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 
 int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 {
+	std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
 	Json::Value json;
 	json["uuid"] = m_sender.getUUID();
 	json["playlist"] = m_playlist.getUUID();
