@@ -96,6 +96,7 @@
 				});
 			}
 			$(document).ready(function() {
+				$.ajaxSetup({ cache: false });
 				reloadPlaylist();
 				$('#pause').on('click', function() { $.ajax({ dataType: 'json', url: '/pause' }) });
 				$('#resume').on('click', function() { $.ajax({ dataType: 'json', url: '/resume' }) });
