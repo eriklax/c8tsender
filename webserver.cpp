@@ -362,6 +362,7 @@ int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 
 	Json::Value json;
 	json["uuid"] = m_sender.getUUID();
+	json["playerstate"] = m_sender.getPlayerState();
 	json["playlist"] = m_playlist.getUUID();
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }

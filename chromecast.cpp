@@ -286,6 +286,7 @@ void ChromeCast::_read()
 				{
 					std::string uuid = m_uuid;
 					Json::Value& status = response["status"][0u];
+					m_player_state = status["playerState"].asString();
 					if (status["playerState"] == "IDLE")
 						m_uuid = "";
 					if (status["playerState"] == "BUFFERING")
@@ -303,6 +304,11 @@ void ChromeCast::_read()
 const std::string& ChromeCast::getUUID() const
 {
 	return m_uuid;
+}
+
+const std::string& ChromeCast::getPlayerState() const
+{
+	return m_player_state;
 }
 
 std::string ChromeCast::getSocketName() const

@@ -66,6 +66,8 @@
 						});
 						$('#playlist').append(div);
 					}
+					if (playlist.tracks.length) $("#next").addClass('btn-primary');
+					else $("#next").removeClass('btn-primary');
 					if (streamInfoTimer == null)
 						streamInfo();
 				})
@@ -81,6 +83,18 @@
 					url: '/streaminfo'
 				})
 				.done(function (obj) {
+					if (obj.playerstate == 'PLAYING' || obj.playerstate == 'BUFFERING') {
+						$("#resume").removeClass('btn-primary');
+						$("#pause").addClass('btn-primary');
+						$("#stop").addClass('btn-primary');
+					} else {
+						if (obj.uuid != '')
+							$("#resume").addClass('btn-primary');
+						else
+							$("#resume").removeClass('btn-primary');
+						$("#pause").removeClass('btn-primary');
+						$("#stop").removeClass('btn-primary');
+					}
 					if (obj.playlist != playlistUUID) {
 						clearTimeout(streamInfoTimer);
 						streamInfoTimer = null;
@@ -121,12 +135,12 @@
 		<div class="container">
 			<p>
 				<div class="btn-group">
-					<button type="button" class="glyphicon glyphicon-play btn btn-primary btn-sm" id="resume" title="Resume"></button>
-					<button type="button" class="glyphicon glyphicon-pause btn btn-primary btn-sm" id="pause" title="Pause"></button>
-					<button type="button" class="glyphicon glyphicon-stop btn btn-primary btn-sm" id="stop" title="Stop"></button>
+					<button type="button" class="glyphicon glyphicon-play btn btn-sm" id="resume" title="Resume"></button>
+					<button type="button" class="glyphicon glyphicon-pause btn btn-sm" id="pause" title="Pause"></button>
+					<button type="button" class="glyphicon glyphicon-stop btn btn-sm" id="stop" title="Stop"></button>
 				</div>
 				<div class="btn-group">
-					<button type="button" class="glyphicon glyphicon-step-forward btn btn-primary btn-sm" id="next" title="Next"></button>
+					<button type="button" class="glyphicon glyphicon-step-forward btn btn-sm" id="next" title="Next"></button>
 				</div>
 				<div class="btn-group pull-right">
 					<button type="button" class="glyphicon glyphicon-random btn btn-sm" id="shuffle" title="Shuffle"></button>
