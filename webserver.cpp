@@ -156,7 +156,7 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 		try {
 			PlaylistItem track = m_playlist.getTrack(url + 6);
 			m_sender.load(
-					"http://" + m_sender.getSocketName() + ":8080/stream/" + track.getUUID(),
+					"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
 					track.getName(), track.getUUID());
 			Json::Value json;
 			return mhd_queue_json(connection, MHD_HTTP_OK, json);
@@ -171,7 +171,7 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 		try {
 			PlaylistItem track = m_playlist.getNextTrack(m_sender.getUUID());
 			m_sender.load(
-					"http://" + m_sender.getSocketName() + ":8080/stream/" + track.getUUID(),
+					"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
 					track.getName(), track.getUUID());
 			Json::Value json;
 			return mhd_queue_json(connection, MHD_HTTP_OK, json);
