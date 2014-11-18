@@ -29,7 +29,7 @@ Webserver::~Webserver()
 	MHD_stop_daemon(mp_d);
 }
 
-int mhd_queue_json(struct MHD_Connection* connection, int status_code, Json::Value& json)
+int mhd_queue_json(struct MHD_Connection* connection, int status_code, const Json::Value& json)
 {
 	Json::FastWriter fw;
 	fw.omitEndingLineFeed();
@@ -149,13 +149,13 @@ int Webserver::GET_file(struct MHD_Connection* connection, const std::string& fi
 
 int Webserver::POST_playlist(struct MHD_Connection* connection, const std::string& data)
 {
-	Json::Value json;
-
 	if (!isPrivileged(connection))
-		return mhd_queue_json(connection, 403, json);
+		return mhd_queue_json(connection, 403, Json::Value());
 
 	PlaylistItem track(data);
 	m_playlist.insert(track);
+
+	Json::Value json;
 	json["uuid"] = track.getUUID();
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
@@ -206,22 +206,19 @@ int Webserver::GET_playlist_shuffle(struct MHD_Connection* connection, bool valu
 int Webserver::GET_pause(struct MHD_Connection* connection)
 {
 	m_sender.pause();
-	Json::Value json;
-	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
 int Webserver::GET_resume(struct MHD_Connection* connection)
 {
 	m_sender.play();
-	Json::Value json;
-	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
 int Webserver::GET_stop(struct MHD_Connection* connection)
 {
 	m_sender.stop();
-	Json::Value json;
-	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
 int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uuid)
@@ -231,8 +228,7 @@ int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uu
 		m_sender.load(
 				"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
 				track.getName(), track.getUUID());
-		Json::Value json;
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
+		return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 	} catch (std::runtime_error& e) {
 		Json::Value json;
 		json["error"] = e.what();
@@ -248,6 +244,7 @@ int Webserver::GET_next(struct MHD_Connection* connection)
 				"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
 				track.getName(), track.getUUID());
 		Json::Value json;
+		json["uuid"] = track.getUUID();
 		return mhd_queue_json(connection, MHD_HTTP_OK, json);
 	} catch (std::runtime_error& e) {
 		Json::Value json;
