@@ -11,6 +11,22 @@ class Webserver {
 		~Webserver();	
 
 	private:
+		int GET_file(struct MHD_Connection* connection, const std::string& file, const std::string& contentType);
+		int POST_playlist(struct MHD_Connection* connection, const std::string& data);
+		int GET_playlist(struct MHD_Connection* connection);
+		int GET_playlist_repeat(struct MHD_Connection* connection, bool value);
+		int GET_playlist_repeatall(struct MHD_Connection* connection, bool value);
+		int GET_playlist_shuffle(struct MHD_Connection* connection, bool value);
+		int GET_pause(struct MHD_Connection* connection);
+		int GET_resume(struct MHD_Connection* connection);
+		int GET_stop(struct MHD_Connection* connection);
+		int GET_play(struct MHD_Connection* connection, const std::string& uuid);
+		int GET_next(struct MHD_Connection* connection);
+		int GET_stream(struct MHD_Connection* connection, const std::string& uuid);
+		int GET_streaminfo(struct MHD_Connection* connection);
+
+		bool isPrivileged(struct MHD_Connection* connection);
+
 		int REST_API(struct MHD_Connection* connection,
 				const char* url,
 				const char* method,

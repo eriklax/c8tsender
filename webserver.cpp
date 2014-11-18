@@ -29,6 +29,233 @@ Webserver::~Webserver()
 	MHD_stop_daemon(mp_d);
 }
 
+int mhd_queue_json(struct MHD_Connection* connection, int status_code, Json::Value& json)
+{
+	Json::FastWriter fw;
+	fw.omitEndingLineFeed();
+	std::string data = fw.write(json);
+	MHD_Response* response = MHD_create_response_from_buffer(data.size(),
+			(void*)data.c_str(),
+			MHD_RESPMEM_MUST_COPY);
+	MHD_add_response_header(response, "Content-Type", "application/json");
+	int ret = MHD_queue_response(connection,
+			status_code,
+			response);
+	MHD_destroy_response(response);
+	return ret;
+}
+
+struct PostRequest
+{
+	bool recving;
+	std::string read_post_data;
+};
+
+int Webserver::REST_API(struct MHD_Connection* connection,
+		const char* url,
+		const char* method,
+		const char* version,
+		const char* upload_data,
+		size_t* upload_data_size,
+		void** ptr)
+{
+	std::string postdata;
+	if (strcmp(method, MHD_HTTP_METHOD_POST) == 0)
+	{
+		PostRequest* request = static_cast<PostRequest*>(*ptr);
+		if (!request) {
+			request = new PostRequest;
+			request->recving = false;
+			*ptr = request;
+		}
+		if (!request->recving) {
+			request->recving = true;
+			return MHD_YES;
+		} else {
+			if (*upload_data_size != 0) {
+				request->read_post_data.append(upload_data, *upload_data_size);
+				*upload_data_size = 0;
+				return MHD_YES;
+			} else {
+				postdata += request->read_post_data;
+				delete request;
+				request = NULL;
+				*ptr = NULL;
+			}
+		}
+	}
+
+	printf("%s %s\n", method, url);
+
+	if (strcmp(method, "POST") == 0)
+	{
+		if (strcmp(url, "/playlist") == 0)
+			return POST_playlist(connection, postdata);
+		return MHD_NO;
+	}
+	if (strcmp(method, "GET") == 0)
+	{
+		if (strcmp(url, "/") == 0)
+			return GET_file(connection, "index.html", "text/html");
+		if (strncmp(url, "/play/", 6) == 0)
+			return GET_play(connection, url + 6);
+		if (strcmp(url, "/next") == 0)
+			return GET_next(connection);
+		if (strcmp(url, "/streaminfo") == 0)
+			return GET_streaminfo(connection);
+		if (strcmp(url, "/pause") == 0)
+			return GET_pause(connection);
+		if (strcmp(url, "/resume") == 0)
+			return GET_resume(connection);
+		if (strcmp(url, "/stop") == 0)
+			return GET_stop(connection);
+		if (strcmp(url, "/playlist") == 0)
+			return GET_playlist(connection);
+		if (strncmp(url, "/playlist/repeat/", 17) == 0)
+			return GET_playlist_repeat(connection, strcmp(url + 17, "1") == 0);
+		if (strncmp(url, "/playlist/repeatall/", 20) == 0)
+			return GET_playlist_repeatall(connection, strcmp(url + 20, "1") == 0);
+		if (strncmp(url, "/playlist/shuffle/", 18) == 0)
+			return GET_playlist_shuffle(connection, strcmp(url + 18, "1") == 0);
+		if (strncmp(url, "/stream/", 8) == 0)
+			return GET_stream(connection, url + 8);
+	}
+	return MHD_NO;
+}
+
+bool Webserver::isPrivileged(struct MHD_Connection* connection)
+{
+	// check if connection from 127.0.0.1
+	struct sockaddr* s = MHD_get_connection_info(connection,
+			MHD_CONNECTION_INFO_CLIENT_ADDRESS)->client_addr;
+	return (s->sa_family == AF_INET && ((struct sockaddr_in*)s)->sin_addr.s_addr == 0x0100007F);
+}
+
+int Webserver::GET_file(struct MHD_Connection* connection, const std::string& file, const std::string& contentType)
+{
+	std::ifstream t(file);
+	std::string str((std::istreambuf_iterator<char>(t)),
+			std::istreambuf_iterator<char>());
+	MHD_Response* response = MHD_create_response_from_buffer(str.size(),
+			(void*)str.c_str(),
+			MHD_RESPMEM_MUST_COPY);
+	MHD_add_response_header(response, "Content-Type", contentType.c_str());
+	int ret = MHD_queue_response(connection,
+			MHD_HTTP_OK,
+			response);
+	MHD_destroy_response(response);
+	return ret;
+}
+
+int Webserver::POST_playlist(struct MHD_Connection* connection, const std::string& data)
+{
+	Json::Value json;
+
+	if (!isPrivileged(connection))
+		return mhd_queue_json(connection, 403, json);
+
+	PlaylistItem track(data);
+	m_playlist.insert(track);
+	json["uuid"] = track.getUUID();
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::GET_playlist(struct MHD_Connection* connection)
+{
+	Json::Value json;
+	json["uuid"] = m_playlist.getUUID();
+	json["repeat"] = m_playlist.getRepeat();
+	json["repeatall"] = m_playlist.getRepeatAll();
+	json["shuffle"] = m_playlist.getShuffle();
+	Json::Value tracklist(Json::arrayValue);
+	for (auto& track : m_playlist.getTracks())
+	{
+		Json::Value t;
+		t["name"] = track.getName();
+		t["uuid"] = track.getUUID();
+		tracklist.append(t);
+	}
+	json["tracks"] = tracklist;
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::GET_playlist_repeat(struct MHD_Connection* connection, bool value)
+{
+	m_playlist.setRepeat(value);
+	Json::Value json;
+	json["repeat"] = m_playlist.getRepeat();
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::GET_playlist_repeatall(struct MHD_Connection* connection, bool value)
+{
+	m_playlist.setRepeatAll(value);
+	Json::Value json;
+	json["repeatall"] = m_playlist.getRepeatAll();
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::GET_playlist_shuffle(struct MHD_Connection* connection, bool value)
+{
+	m_playlist.setShuffle(value);
+	Json::Value json;
+	json["shuffle"] = m_playlist.getShuffle();
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::GET_pause(struct MHD_Connection* connection)
+{
+	m_sender.pause();
+	Json::Value json;
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::GET_resume(struct MHD_Connection* connection)
+{
+	m_sender.play();
+	Json::Value json;
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::GET_stop(struct MHD_Connection* connection)
+{
+	m_sender.stop();
+	Json::Value json;
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uuid)
+{
+	try {
+		PlaylistItem track = m_playlist.getTrack(uuid);
+		m_sender.load(
+				"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
+				track.getName(), track.getUUID());
+		Json::Value json;
+		return mhd_queue_json(connection, MHD_HTTP_OK, json);
+	} catch (std::runtime_error& e) {
+		Json::Value json;
+		json["error"] = e.what();
+		return mhd_queue_json(connection, 500, json);
+	}
+}
+
+int Webserver::GET_next(struct MHD_Connection* connection)
+{
+	try {
+		PlaylistItem track = m_playlist.getNextTrack(m_sender.getUUID());
+		m_sender.load(
+				"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
+				track.getName(), track.getUUID());
+		Json::Value json;
+		return mhd_queue_json(connection, MHD_HTTP_OK, json);
+	} catch (std::runtime_error& e) {
+		Json::Value json;
+		json["error"] = e.what();
+		return mhd_queue_json(connection, 500, json);
+	}
+}
+
 struct mhd_forkctx
 {
 	pid_t pid;
@@ -54,244 +281,58 @@ ssize_t mhd_forkctx_read(void* cls, uint64_t pos, char* buf, size_t max)
 	return r;
 }
 
-int mhd_queue_json(struct MHD_Connection* connection, int status_code, Json::Value& json)
+int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& uuid)
 {
-	Json::FastWriter fw;
-	fw.omitEndingLineFeed();
-	std::string data = fw.write(json);
-	MHD_Response* response = MHD_create_response_from_buffer(data.size(),
-			(void*)data.c_str(),
-			MHD_RESPMEM_MUST_COPY);
-	MHD_add_response_header(response, "Content-Type", "application/json");
+	std::string path;
+	try {
+		PlaylistItem track = m_playlist.getTrack(uuid);
+		path = track.getPath();
+	} catch (std::runtime_error& e) {
+		Json::Value json;
+		json["error"] = e.what();
+		return mhd_queue_json(connection, 500, json);
+	}
+
+	std::vector<const char*> cbuf;
+	cbuf.push_back("./ffmpeg");
+	cbuf.push_back("-y");
+	cbuf.push_back("-i"); cbuf.push_back(path.c_str());
+	cbuf.push_back("-vcodec"); cbuf.push_back("copy");
+	cbuf.push_back("-acodec"); cbuf.push_back("aac");
+	cbuf.push_back("-strict"); cbuf.push_back("-2");
+	cbuf.push_back("-f"); cbuf.push_back("matroska");
+	cbuf.push_back("-");
+	cbuf.push_back(0);
+
+	int mypipe[2];
+	pipe(mypipe);
+	pid_t pid = fork();
+	if (pid == (pid_t)0)
+	{
+		close(mypipe[0]);
+		close(fileno(stderr));
+		// TODO: closefrom(3)
+		dup2(mypipe[1], fileno(stdout));
+		execvp(cbuf[0], (char* const*)&cbuf[0]);
+		_exit(1);
+	}
+	close(mypipe[1]);
+	mhd_forkctx* f = new mhd_forkctx;
+	f->pid = pid;
+	f->fd = mypipe[0];
+	MHD_Response* response = MHD_create_response_from_callback(-1, 8192, &mhd_forkctx_read, f, &mhd_forkctx_clean);
+	MHD_add_response_header(response, "Content-Type", "video/x-matroska");
 	int ret = MHD_queue_response(connection,
-			status_code,
+			MHD_HTTP_OK,
 			response);
 	MHD_destroy_response(response);
 	return ret;
 }
 
-struct ConnectionData
+int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 {
-	bool recving;
-	std::string read_post_data;
-};
-
-int Webserver::REST_API(struct MHD_Connection* connection,
-		const char* url,
-		const char* method,
-		const char* version,
-		const char* upload_data,
-		size_t* upload_data_size,
-		void** ptr)
-{
-	std::string postdata;
-	if (strcmp(method, MHD_HTTP_METHOD_POST) == 0)
-	{
-		ConnectionData* connection_data = static_cast<ConnectionData*>(*ptr);
-		if (!connection_data) {
-			connection_data = new ConnectionData;
-			connection_data->recving = false;
-			*ptr = connection_data;
-		}
-		if (!connection_data->recving) {
-			connection_data->recving = true;
-			return MHD_YES;
-		} else {
-			if (*upload_data_size != 0) {
-				connection_data->read_post_data.append(upload_data, *upload_data_size);
-				*upload_data_size = 0;
-				return MHD_YES;
-			} else {
-				postdata += connection_data->read_post_data;
-				delete connection_data;
-				connection_data = NULL;
-				*ptr = NULL;
-			}
-		}
-	}
-
-	printf("%s %s\n", method, url);
-
-	if (strcmp(method, "POST") == 0)
-	{
-		if (strcmp(url, "/playlist") == 0)
-		{
-			struct sockaddr* s = MHD_get_connection_info(connection,
-			        MHD_CONNECTION_INFO_CLIENT_ADDRESS)->client_addr;
-			Json::Value json;
-
-			// Only localhost...
-			if (s->sa_family == AF_INET && ((struct sockaddr_in*)s)->sin_addr.s_addr == 0x0100007F)
-			{
-				PlaylistItem track(postdata);
-				m_playlist.insert(track);
-				json["uuid"] = track.getUUID();
-				return mhd_queue_json(connection, MHD_HTTP_OK, json);
-			}
-			return mhd_queue_json(connection, 403, json);
-		}
-	}
-
-	if (strcmp(method, "GET") != 0)
-		return MHD_NO;
-
-	if (strcmp(url, "/") == 0)
-	{
-		std::ifstream t("index.html");
-		std::string str((std::istreambuf_iterator<char>(t)),
-				std::istreambuf_iterator<char>());
-		MHD_Response* response = MHD_create_response_from_buffer(str.size(),
-				(void*)str.c_str(),
-				MHD_RESPMEM_MUST_COPY);
-		MHD_add_response_header(response, "Content-Type", "text/html");
-		int ret = MHD_queue_response(connection,
-				MHD_HTTP_OK,
-				response);
-		MHD_destroy_response(response);
-		return ret;
-	}
-
-	if (strncmp(url, "/play/", 6) == 0)
-	{
-		try {
-			PlaylistItem track = m_playlist.getTrack(url + 6);
-			m_sender.load(
-					"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
-					track.getName(), track.getUUID());
-			Json::Value json;
-			return mhd_queue_json(connection, MHD_HTTP_OK, json);
-		} catch (std::runtime_error& e) {
-			Json::Value json;
-			json["error"] = e.what();
-			return mhd_queue_json(connection, 500, json);
-		}
-	}
-	if (strcmp(url, "/next") == 0)
-	{
-		try {
-			PlaylistItem track = m_playlist.getNextTrack(m_sender.getUUID());
-			m_sender.load(
-					"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + track.getUUID(),
-					track.getName(), track.getUUID());
-			Json::Value json;
-			return mhd_queue_json(connection, MHD_HTTP_OK, json);
-		} catch (std::runtime_error& e) {
-			Json::Value json;
-			json["error"] = e.what();
-			return mhd_queue_json(connection, 500, json);
-		}
-	}
-	if (strcmp(url, "/streaminfo") == 0)
-	{
-		Json::Value json;
-		json["uuid"] = m_sender.getUUID();
-		json["playlist"] = m_playlist.getUUID();
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
-	}
-	if (strcmp(url, "/pause") == 0)
-	{
-		m_sender.pause();
-		Json::Value json;
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
-	}
-	if (strcmp(url, "/resume") == 0)
-	{
-		m_sender.play();
-		Json::Value json;
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
-	}
-	if (strcmp(url, "/stop") == 0)
-	{
-		m_sender.stop();
-		Json::Value json;
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
-	}
-	if (strcmp(url, "/playlist") == 0)
-	{
-		Json::Value json;
-		json["uuid"] = m_playlist.getUUID();
-		json["repeat"] = m_playlist.getRepeat();
-		json["repeatall"] = m_playlist.getRepeatAll();
-		json["shuffle"] = m_playlist.getShuffle();
-		Json::Value tracklist(Json::arrayValue);
-		for (auto& track : m_playlist.getTracks())
-		{
-			Json::Value t;
-			t["name"] = track.getName();
-			t["uuid"] = track.getUUID();
-			tracklist.append(t);
-		}
-		json["tracks"] = tracklist;
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
-	}
-	if (strncmp(url, "/playlist/repeat/", 17) == 0)
-	{
-		m_playlist.setRepeat(strcmp(url + 17, "1") == 0);
-		Json::Value json;
-		json["repeat"] = m_playlist.getRepeat();
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
-	}
-	if (strncmp(url, "/playlist/repeatall/", 20) == 0)
-	{
-		m_playlist.setRepeatAll(strcmp(url + 20, "1") == 0);
-		Json::Value json;
-		json["repeatall"] = m_playlist.getRepeatAll();
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
-	}
-	if (strncmp(url, "/playlist/shuffle/", 18) == 0)
-	{
-		m_playlist.setShuffle(strcmp(url + 18, "1") == 0);
-		Json::Value json;
-		json["shuffle"] = m_playlist.getShuffle();
-		return mhd_queue_json(connection, MHD_HTTP_OK, json);
-	}
-
-	if (strncmp(url, "/stream/", 8) == 0)
-	{
-		std::string path;
-		try {
-			PlaylistItem track = m_playlist.getTrack(url + 8);
-			path = track.getPath();
-		} catch (std::runtime_error& e) {
-			Json::Value json;
-			json["error"] = e.what();
-			return mhd_queue_json(connection, 500, json);
-		}
-
-		std::vector<const char*> cbuf;
-		cbuf.push_back("./ffmpeg");
-		cbuf.push_back("-y");
-		cbuf.push_back("-i"); cbuf.push_back(path.c_str());
-		cbuf.push_back("-vcodec"); cbuf.push_back("copy");
-		cbuf.push_back("-acodec"); cbuf.push_back("aac");
-		cbuf.push_back("-strict"); cbuf.push_back("-2");
-		cbuf.push_back("-f"); cbuf.push_back("matroska");
-		cbuf.push_back("-");
-		cbuf.push_back(0);
-
-		int mypipe[2];
-		pipe(mypipe);
-		pid_t pid = fork();
-		if (pid == (pid_t)0)
-		{
-			close(mypipe[0]);
-			close(fileno(stderr));
-			dup2(mypipe[1], fileno(stdout));
-			execvp(cbuf[0], (char* const*)&cbuf[0]);
-			_exit(1);
-		}
-		close(mypipe[1]);
-		mhd_forkctx* f = new mhd_forkctx;
-		f->pid = pid;
-		f->fd = mypipe[0];
-		MHD_Response* response = MHD_create_response_from_callback(-1, 8192, &mhd_forkctx_read, f, &mhd_forkctx_clean);
-		MHD_add_response_header(response, "Content-Type", "video/x-matroska");
-		int ret = MHD_queue_response(connection,
-				MHD_HTTP_OK,
-				response);
-		MHD_destroy_response(response);
-		return ret;
-	}
-
-	return MHD_NO;
+	Json::Value json;
+	json["uuid"] = m_sender.getUUID();
+	json["playlist"] = m_playlist.getUUID();
+	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
