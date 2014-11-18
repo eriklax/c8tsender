@@ -87,6 +87,10 @@
 						$("#resume").removeClass('btn-primary');
 						$("#pause").addClass('btn-primary');
 						$("#stop").addClass('btn-primary');
+					} else if (obj.playerstate == 'PAUSED') {
+						$("#resume").addClass('btn-primary');
+						$("#pause").removeClass('btn-primary');
+						$("#stop").addClass('btn-primary');
 					} else {
 						if (obj.uuid != '')
 							$("#resume").addClass('btn-primary');
