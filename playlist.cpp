@@ -64,7 +64,7 @@ bool Playlist::remove(const std::string& uuid)
 	return true;
 }
 
-PlaylistItem Playlist::getTrack(const std::string& uuid) const
+const PlaylistItem& Playlist::getTrack(const std::string& uuid) const
 {
 	auto ptr = std::find_if(m_items.begin(), m_items.end(),
 			[&uuid](PlaylistItem const& item) {
@@ -75,7 +75,7 @@ PlaylistItem Playlist::getTrack(const std::string& uuid) const
 	return *ptr;
 }
 
-PlaylistItem Playlist::getNextTrack(const std::string& uuid) const
+const PlaylistItem& Playlist::getNextTrack(const std::string& uuid) const
 {
 	if (m_items.empty())
 		throw std::runtime_error("playlist is empty");
@@ -147,4 +147,9 @@ void Playlist::setShuffle(bool value)
 	if (m_shuffle != value)
 		m_uuid = uuidgen();
 	m_shuffle = value;
+}
+
+std::mutex& Playlist::getMutex()
+{
+	return m_mutex;
 }

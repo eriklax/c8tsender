@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <mutex>
 
 class PlaylistItem {
 	public:
@@ -23,8 +24,8 @@ class Playlist {
 
 		void insert(const PlaylistItem& item);
 		bool remove(const std::string& uuid);
-		PlaylistItem getTrack(const std::string& uuid) const;
-		PlaylistItem getNextTrack(const std::string& uuid) const;
+		const PlaylistItem& getTrack(const std::string& uuid) const;
+		const PlaylistItem& getNextTrack(const std::string& uuid) const;
 
 		bool getRepeat() const;
 		bool getRepeatAll() const;
@@ -35,12 +36,15 @@ class Playlist {
 		void setRepeat(bool value);
 		void setRepeatAll(bool value);
 		void setShuffle(bool value);
+
+		std::mutex& getMutex();
 	private:
 		bool m_repeat;
 		bool m_repeatall;
 		bool m_shuffle;
 		std::vector<PlaylistItem> m_items;
 		std::string m_uuid;
+		std::mutex m_mutex;
 };
 
 #endif
