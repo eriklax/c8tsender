@@ -39,6 +39,7 @@ class ChromeCast {
 		unsigned int m_media_session_id;
 		unsigned int _request_id();
 		int m_request_id = 0;
+		bool m_init = false;
 		std::string m_source_id = "sender-0";
 		std::string m_destination_id = "receiver-0";
 

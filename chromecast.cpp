@@ -54,6 +54,7 @@ unsigned int ChromeCast::_request_id()
 
 void ChromeCast::init()
 {
+	m_destination_id = "receiver-0";
 	Json::Value response;
 	{
 		Json::Value msg;
@@ -97,10 +98,13 @@ void ChromeCast::init()
 		msg["origin"] = Json::Value(Json::objectValue);
 		send("urn:x-cast:com.google.cast.tp.connection", msg);
 	}
+	m_init = true;
 }
 
 void ChromeCast::load(const std::string& url, const std::string& title, const std::string& uuid)
 {
+	if (!m_init)
+		init();
 	Json::Value msg;
 	msg["type"] = "LOAD";
 	msg["requestId"] = _request_id();
@@ -117,6 +121,8 @@ void ChromeCast::load(const std::string& url, const std::string& title, const st
 
 void ChromeCast::pause()
 {
+	if (!m_init)
+		init();
 	Json::Value msg;
 	msg["type"] = "PAUSE";
 	msg["requestId"] = _request_id();
@@ -126,6 +132,8 @@ void ChromeCast::pause()
 
 void ChromeCast::play()
 {
+	if (!m_init)
+		init();
 	Json::Value msg;
 	msg["type"] = "PLAY";
 	msg["requestId"] = _request_id();
@@ -135,6 +143,8 @@ void ChromeCast::play()
 
 void ChromeCast::stop()
 {
+	if (!m_init)
+		init();
 	Json::Value msg;
 	msg["type"] = "STOP";
 	msg["requestId"] = _request_id();
@@ -250,6 +260,20 @@ void ChromeCast::_read()
 			SSL_write(m_ssls, &len, sizeof len);
 			SSL_write(m_ssls, data.c_str(), data.size());
 			continue;
+		}
+
+		if (msg.namespace_() == "urn:x-cast:com.google.cast.tp.connection")
+		{
+			if (response["type"].asString() == "CLOSE")
+			{
+				m_mutex.lock();
+				m_init = false;
+				for (auto& item : m_wait) {
+					item.second.second = Json::Value();
+					item.second.first->notify_all();
+				}
+				m_mutex.unlock();
+			}
 		}
 
 		if (msg.namespace_() == "urn:x-cast:com.google.cast.media")
