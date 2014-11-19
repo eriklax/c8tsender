@@ -7,6 +7,7 @@
 #include <json/json.h>
 #include <fstream>
 #include <streambuf>
+#include <syslog.h>
 
 Webserver::Webserver(unsigned short port, ChromeCast& sender, Playlist& playlist)
 : m_port(port)
@@ -85,7 +86,7 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 		}
 	}
 
-	printf("%s %s\n", method, url);
+	syslog(LOG_DEBUG, "%s %s", method, url);
 
 	if (strcmp(method, "POST") == 0)
 	{

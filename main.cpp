@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 	chromecast.init();
 	chromecast.setMediaStatusCallback([&chromecast, &playlist, port](const std::string& playerState,
 			const std::string& idleReason, const std::string& uuid) -> void {
-		printf("mediastatus: %s %s %s\n", playerState.c_str(), idleReason.c_str(), uuid.c_str());
+		syslog(LOG_DEBUG, "mediastatus: %s %s %s", playerState.c_str(), idleReason.c_str(), uuid.c_str());
 		if (playerState == "IDLE") {
 			if (idleReason == "FINISHED") {
 				try {
