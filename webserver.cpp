@@ -97,7 +97,19 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 	if (strcmp(method, "GET") == 0)
 	{
 		if (strcmp(url, "/") == 0)
-			return GET_file(connection, "index.html", "text/html");
+			return GET_file(connection, "htdocs/index.html", "text/html");
+		if (strcmp(url, "/bootstrap.min.css") == 0)
+			return GET_file(connection, "htdocs/bootstrap.min.css", "text/css");
+		if (strcmp(url, "/fonts/glyphicons-halflings-regular.ttf") == 0)
+			return GET_file(connection, "htdocs/glyphicons-halflings-regular.ttf", "application/x-font-ttf");
+		if (strcmp(url, "/fonts/glyphicons-halflings-regular.woff") == 0)
+			return GET_file(connection, "htdocs/glyphicons-halflings-regular.woff", "application/octet-stream");
+		if (strcmp(url, "/bootstrap-theme.min.css") == 0)
+			return GET_file(connection, "htdocs/bootstrap-theme.min.css", "text/css");
+		if (strcmp(url, "/bootstrap.min.js") == 0)
+			return GET_file(connection, "htdocs/bootstrap.min.js", "text/javascript");
+		if (strcmp(url, "/jquery-2.1.1.min.js") == 0)
+			return GET_file(connection, "htdocs/jquery-2.1.1.min.js", "text/javascript");
 		if (strncmp(url, "/play/", 6) == 0)
 			return GET_play(connection, url + 6);
 		if (strcmp(url, "/next") == 0)
