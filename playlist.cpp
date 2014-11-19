@@ -94,6 +94,8 @@ const PlaylistItem& Playlist::getNextTrack(const std::string& uuid) const
 			});
 	if (ptr == m_items.end())
 		return m_items[0];
+	if (m_repeat)
+		return *ptr;
 	++ptr;
 	if (ptr == m_items.end()) {
 		if (!m_repeatall)
