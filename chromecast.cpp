@@ -9,36 +9,31 @@
 
 ChromeCast::ChromeCast(const std::string& ip)
 : m_ip(ip)
+, m_s(-1)
+, m_ssl(NULL)
+, m_ssl_ctx(NULL)
 {
+	m_ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+
 	if (!connect())
-		throw std::runtime_error("could not connect");
+		throw std::runtime_error("Could not connect");
 }
 
 ChromeCast::~ChromeCast()
 {
 	disconnect();
+	SSL_CTX_free(m_ssl_ctx);
 }
 
-void ChromeCast::setMediaStatusCallback(std::function<void(const std::string&,
-			const std::string&, const std::string&)> func)
-{
-	m_mediaStatusCallback = func;
-}
-
-unsigned int ChromeCast::_request_id()
-{
-	unsigned int request_id;
-	m_mutex.lock();
-	request_id = m_request_id++;
-	m_mutex.unlock();
-	return request_id;
-}
-
+// establish connection to the ChromeCast device, m_init is set to indicate that
+// the protocol needs to be bootstrapped.
 bool ChromeCast::connect()
 {
 	m_s = socket(PF_INET, SOCK_STREAM, 0);
-	if (m_s == -1)
+	if (m_s == -1) {
+		syslog(LOG_CRIT, "socket() failed: %m");
 		return false;
+	}
 	struct sockaddr_in inaddr;
 	memset(&inaddr, 0, sizeof inaddr);
 	inaddr.sin_family = AF_INET;
@@ -46,19 +41,22 @@ bool ChromeCast::connect()
 	inaddr.sin_addr.s_addr = inet_addr(m_ip.c_str());
 	if (::connect(m_s, (const struct sockaddr *)&inaddr,
 				sizeof inaddr) != 0) {
+		syslog(LOG_CRIT, "connect() failed: %m");
 		close(m_s);
+		m_s = -1;
 		return false;
 	}
 
-	SSL_CTX* x = SSL_CTX_new(TLSv1_client_method());
-	m_ssls = SSL_new(x);
-	SSL_set_fd(m_ssls, m_s);
-	SSL_set_mode(m_ssls, SSL_get_mode(m_ssls) | SSL_MODE_AUTO_RETRY);
-	SSL_set_connect_state(m_ssls);
-	if (SSL_connect(m_ssls) != 1) {
-		SSL_free(m_ssls);
-		m_ssls = NULL;
+	m_ssl = SSL_new(m_ssl_ctx);
+	SSL_set_fd(m_ssl, m_s);
+	SSL_set_mode(m_ssl, SSL_get_mode(m_ssl) | SSL_MODE_AUTO_RETRY);
+	SSL_set_connect_state(m_ssl);
+	if (SSL_connect(m_ssl) != 1) {
+		syslog(LOG_CRIT, "SSL_connect() failed");
+		SSL_free(m_ssl);
+		m_ssl = NULL;
 		close(m_s);
+		m_s = -1;
 		return false;
 	}
 	m_tread = std::thread(&ChromeCast::_read, this);
@@ -70,72 +68,74 @@ bool ChromeCast::init()
 {
 	static std::mutex m_init_mutex;
 	std::lock_guard<std::mutex> lock(m_init_mutex);
+
 	if (m_init)
 		return true;
 
-	if (!m_ssls)
+	if (!m_ssl)
 		if (!connect())
 			return false;
 
 	m_destination_id = "receiver-0";
 	m_session_id = "";
-	Json::Value response;
-	{
-		Json::Value msg;
-		msg["type"] = "CONNECT";
-		msg["origin"] = Json::Value(Json::objectValue);
-		send("urn:x-cast:com.google.cast.tp.connection", msg);
-		if (!m_ssls) return false;
-	}
-	{
-		Json::Value msg;
-		msg["type"] = "GET_STATUS";
-		msg["requestId"] = _request_id();
-		response = send("urn:x-cast:com.google.cast.receiver", msg);
-		bool isRunning = false;
-		if (response.isMember("status") &&
-			response["status"].isMember("applications") &&
-			response["status"]["applications"].isValidIndex(0u)) {
-			Json::Value& application = response["status"]["applications"][0u];
-			if (application["appId"].asString() == "CC1AD845")
-				isRunning = true;
-		}
-		if (!isRunning)
-		{
-			Json::Value msg;
-			msg["type"] = "LAUNCH";
-			msg["requestId"] = _request_id();
-			msg["appId"] = "CC1AD845";
-			response = send("urn:x-cast:com.google.cast.receiver", msg);
-		}
-	}
+
+	Json::Value msg, response;
+
+	msg = Json::objectValue;
+	msg["type"] = "CONNECT";
+	msg["origin"] = Json::Value(Json::objectValue);
+	send("urn:x-cast:com.google.cast.tp.connection", msg);
+	if (!m_ssl) return false;
+
+	msg = Json::objectValue;
+	msg["type"] = "GET_STATUS";
+	msg["requestId"] = _request_id();
+	response = send("urn:x-cast:com.google.cast.receiver", msg);
+
 	if (response.isMember("status") &&
 			response["status"].isMember("applications") &&
-			response["status"]["applications"].isValidIndex(0u))
-	{
+			response["status"]["applications"].isValidIndex(0u) &&
+			response["status"]["applications"][0u].isMember("appId") &&
+			response["status"]["applications"][0u]["appId"].asString() == "CC1AD845") {
+		syslog(LOG_DEBUG, "Default Media Receiver already running");
+	} else {
+		msg = Json::objectValue;
+		msg["type"] = "LAUNCH";
+		msg["requestId"] = _request_id();
+		msg["appId"] = "CC1AD845";
+		response = send("urn:x-cast:com.google.cast.receiver", msg);
+	}
+
+	if (response.isMember("status") &&
+			response["status"].isMember("applications") &&
+			response["status"]["applications"].isValidIndex(0u)) {
 		Json::Value& application = response["status"]["applications"][0u];
 		m_destination_id = application["transportId"].asString();
 		m_session_id = application["sessionId"].asString();
+	} else {
+		syslog(LOG_CRIT, "transportId and sessionId not found");
+		return false;
 	}
-	{
-		Json::Value msg;
-		msg["type"] = "CONNECT";
-		msg["origin"] = Json::Value(Json::objectValue);
-		send("urn:x-cast:com.google.cast.tp.connection", msg);
-	}
+
+	msg = Json::objectValue;
+	msg["type"] = "CONNECT";
+	msg["origin"] = Json::Value(Json::objectValue);
+	send("urn:x-cast:com.google.cast.tp.connection", msg);
+
 	m_init = true;
 	return true;
 }
 
+// disconnect() is called on error, so the background thread should already
+// have exiteded... and be joinable...
 void ChromeCast::disconnect()
 {
 	m_tread.join();
 	if (m_s != -1)
 		close(m_s);
-	if (m_ssls)
-		SSL_free(m_ssls);
 	m_s = -1;
-	m_ssls = NULL;
+	SSL_free(m_ssl);
+	m_ssl = NULL;
 	m_init = false;
 }
 
@@ -181,10 +181,10 @@ Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& p
 
 	int w;
 	m_ssl_mutex.lock();
-	if (m_ssls) {
-		w = SSL_write(m_ssls, foo.c_str(), foo.size());
+	if (m_ssl) {
+		w = SSL_write(m_ssl, foo.c_str(), foo.size());
 		if (w == -1) {
-			syslog(LOG_DEBUG, "SSL_write reror");
+			syslog(LOG_DEBUG, "SSL_write error");
 			disconnect();
 		}
 	} else
@@ -218,7 +218,7 @@ void ChromeCast::_read()
 		char pktlen[4];
 		int r;
 		for (r = 0; r < sizeof pktlen; ++r)
-			if (SSL_read(m_ssls, pktlen + r, 1) < 1)
+			if (SSL_read(m_ssl, pktlen + r, 1) < 1)
 				break;
 		if (r != sizeof pktlen) {
 			syslog(LOG_ERR, "SSL_read error");
@@ -238,7 +238,7 @@ void ChromeCast::_read()
 		std::string buf;
 		while (buf.size() < len) {
 			char b[2048];
-			int r = SSL_read(m_ssls, b, sizeof b);
+			int r = SSL_read(m_ssl, b, sizeof b);
 			if (r < 1)
 				break;
 			buf.append(b, r);
@@ -281,8 +281,8 @@ void ChromeCast::_read()
 			std::string data;
 			reply.SerializeToString(&data);
 			unsigned int len = htonl(data.size());
-			SSL_write(m_ssls, &len, sizeof len);
-			SSL_write(m_ssls, data.c_str(), data.size());
+			SSL_write(m_ssl, &len, sizeof len);
+			SSL_write(m_ssl, data.c_str(), data.size());
 			continue;
 		}
 
@@ -435,4 +435,19 @@ bool ChromeCast::stop()
 	msg["mediaSessionId"] = m_media_session_id;
 	response = send("urn:x-cast:com.google.cast.media", msg);
 	return isPlayerState(response, "IDLE");
+}
+
+void ChromeCast::setMediaStatusCallback(std::function<void(const std::string&,
+			const std::string&, const std::string&)> func)
+{
+	m_mediaStatusCallback = func;
+}
+
+unsigned int ChromeCast::_request_id()
+{
+	unsigned int request_id;
+	m_mutex.lock();
+	request_id = m_request_id++;
+	m_mutex.unlock();
+	return request_id;
 }
