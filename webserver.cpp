@@ -225,19 +225,22 @@ int Webserver::GET_playlist_shuffle(struct MHD_Connection* connection, bool valu
 
 int Webserver::GET_pause(struct MHD_Connection* connection)
 {
-	m_sender.pause();
+	if (!m_sender.pause())
+		return mhd_queue_json(connection, 500, Json::Value());
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
 int Webserver::GET_resume(struct MHD_Connection* connection)
 {
-	m_sender.play();
+	if (!m_sender.play())
+		return mhd_queue_json(connection, 500, Json::Value());
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
 int Webserver::GET_stop(struct MHD_Connection* connection)
 {
-	m_sender.stop();
+	if (!m_sender.stop())
+		return mhd_queue_json(connection, 500, Json::Value());
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
@@ -254,9 +257,10 @@ int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uu
 		json["error"] = e.what();
 		return mhd_queue_json(connection, 500, json);
 	}
-	m_sender.load(
+	if (!m_sender.load(
 			"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + uuid,
-			name, uuid);
+			name, uuid))
+		return mhd_queue_json(connection, 500, Json::Value());
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
@@ -276,9 +280,10 @@ int Webserver::GET_next(struct MHD_Connection* connection)
 		json["error"] = e.what();
 		return mhd_queue_json(connection, 500, json);
 	}
-	m_sender.load(
+	if (!m_sender.load(
 			"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + uuid,
-			name, uuid);
+			name, uuid))
+		return mhd_queue_json(connection, 500, Json::Value());
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 

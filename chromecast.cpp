@@ -112,11 +112,26 @@ void ChromeCast::disconnect()
 		close(m_s);
 }
 
-void ChromeCast::load(const std::string& url, const std::string& title, const std::string& uuid)
+bool isPlayerState(const Json::Value& response, const std::string& playerState) 
+{
+	if (response.isMember("type") && response["type"].asString() == "MEDIA_STATUS")
+	{
+		if (response.isMember("status") &&
+				response["status"].isValidIndex(0u))
+		{
+			const Json::Value& status = response["status"][0u];
+			if (status.isMember("playerState") && status["playerState"].asString() == playerState)
+				return true;
+		}
+	}
+	return false;
+}
+
+bool ChromeCast::load(const std::string& url, const std::string& title, const std::string& uuid)
 {
 	if (!m_init)
 		init();
-	Json::Value msg;
+	Json::Value msg, response;
 	msg["type"] = "LOAD";
 	msg["requestId"] = _request_id();
 	msg["sessionId"] = m_session_id;
@@ -127,40 +142,44 @@ void ChromeCast::load(const std::string& url, const std::string& title, const st
 	msg["media"]["metadata"]["title"] = title;
 	msg["autoplay"] = true;
 	msg["currentTime"] = 0;
-	send("urn:x-cast:com.google.cast.media", msg);
+	response = send("urn:x-cast:com.google.cast.media", msg);
+	return isPlayerState(response, "BUFFERING") || isPlayerState(response, "PLAYING");
 }
 
-void ChromeCast::pause()
+bool ChromeCast::pause()
 {
 	if (!m_init)
 		init();
-	Json::Value msg;
+	Json::Value msg, response;
 	msg["type"] = "PAUSE";
 	msg["requestId"] = _request_id();
 	msg["mediaSessionId"] = m_media_session_id;
-	send("urn:x-cast:com.google.cast.media", msg);
+	response = send("urn:x-cast:com.google.cast.media", msg);
+	return isPlayerState(response, "PAUSED");
 }
 
-void ChromeCast::play()
+bool ChromeCast::play()
 {
 	if (!m_init)
 		init();
-	Json::Value msg;
+	Json::Value msg, response;
 	msg["type"] = "PLAY";
 	msg["requestId"] = _request_id();
 	msg["mediaSessionId"] = m_media_session_id;
-	send("urn:x-cast:com.google.cast.media", msg);
+	response = send("urn:x-cast:com.google.cast.media", msg);
+	return isPlayerState(response, "BUFFERING") || isPlayerState(response, "PLAYING");
 }
 
-void ChromeCast::stop()
+bool ChromeCast::stop()
 {
 	if (!m_init)
 		init();
-	Json::Value msg;
+	Json::Value msg, response;
 	msg["type"] = "STOP";
 	msg["requestId"] = _request_id();
 	msg["mediaSessionId"] = m_media_session_id;
-	send("urn:x-cast:com.google.cast.media", msg);
+	response = send("urn:x-cast:com.google.cast.media", msg);
+	return isPlayerState(response, "IDLE");
 }
 
 Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& payload)

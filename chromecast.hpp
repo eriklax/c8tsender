@@ -17,10 +17,10 @@ class ChromeCast {
 
 		void setMediaStatusCallback(std::function<void(const std::string&,
 					const std::string&, const std::string&)> func);
-		void load(const std::string& url, const std::string& title, const std::string& uuid);
-		void play();
-		void pause();
-		void stop();
+		bool load(const std::string& url, const std::string& title, const std::string& uuid);
+		bool play();
+		bool pause();
+		bool stop();
 
 		const std::string& getUUID() const;
 		const std::string& getPlayerState() const;
