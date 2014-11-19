@@ -2,6 +2,7 @@
 #include "chromecast.hpp"
 #include "webserver.hpp"
 #include "cast_channel.pb.h"
+#include <syslog.h>
 
 int main(int argc, char* argv[])
 {
@@ -15,6 +16,8 @@ int main(int argc, char* argv[])
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
 	OpenSSL_add_ssl_algorithms();
  	SSL_load_error_strings();
+	signal(SIGPIPE, SIG_IGN);
+	openlog(NULL, LOG_PID | LOG_PERROR, LOG_DAEMON);
 
 	Playlist playlist;
 	ChromeCast chromecast(argv[1]);
