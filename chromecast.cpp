@@ -337,7 +337,8 @@ void ChromeCast::_read()
 					m_player_state = status["playerState"].asString();
 					if (status["playerState"] == "IDLE")
 						m_uuid = "";
-					if (status["playerState"] == "BUFFERING")
+					if (status["playerState"] == "BUFFERING" &&
+							!status["media"]["customData"]["uuid"].asString().empty())
 						uuid = m_uuid = status["media"]["customData"]["uuid"].asString();
 					if (m_mediaStatusCallback)
 						m_mediaStatusCallback(status["playerState"].asString(),
