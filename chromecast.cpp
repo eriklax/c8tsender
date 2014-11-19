@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <syslog.h>
 
 ChromeCast::ChromeCast(const std::string& ip)
 : m_ip(ip)
@@ -59,6 +60,7 @@ void ChromeCast::connect()
 void ChromeCast::init()
 {
 	m_destination_id = "receiver-0";
+	m_session_id = "";
 	Json::Value response;
 	{
 		Json::Value msg;
@@ -145,14 +147,21 @@ Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& p
 		m_mutex.unlock();
 	}
 
-	printf("%ld: %s -> %s (%s): %s\n",
-			time(NULL),
+	syslog(LOG_DEBUG, "%s -> %s (%s): %s",
 			msg.source_id().c_str(),
 			msg.destination_id().c_str(),
 			msg.namespace_().c_str(),
 			msg.payload_utf8().c_str()
 		  );
 	int w = SSL_write(m_ssls, foo.c_str(), foo.size());
+
+	if (wait && w == -1)
+	{
+		m_mutex.lock();
+		m_wait.erase(requestId);
+		m_mutex.unlock();
+		wait = false;
+	}
 
 	Json::Value ret;
 	if (wait) {
@@ -192,8 +201,7 @@ void ChromeCast::_read()
 		extensions::core_api::cast_channel::CastMessage msg;
 		msg.ParseFromString(buf);
 
-		printf("%ld: %s -> %s (%s): %s\n",
-				time(NULL),
+		syslog(LOG_DEBUG, "%s -> %s (%s): %s",
 				msg.source_id().c_str(),
 				msg.destination_id().c_str(),
 				msg.namespace_().c_str(),
