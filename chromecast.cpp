@@ -85,6 +85,7 @@ bool ChromeCast::init()
 		msg["type"] = "CONNECT";
 		msg["origin"] = Json::Value(Json::objectValue);
 		send("urn:x-cast:com.google.cast.tp.connection", msg);
+		if (!m_ssls) return false;
 	}
 	{
 		Json::Value msg;
@@ -183,7 +184,7 @@ Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& p
 	if (m_ssls) {
 		w = SSL_write(m_ssls, foo.c_str(), foo.size());
 		if (w == -1) {
-			syslog(LOG_DEBUG, "SSL_write eror");
+			syslog(LOG_DEBUG, "SSL_write reror");
 			disconnect();
 		}
 	} else
