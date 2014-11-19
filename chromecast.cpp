@@ -7,34 +7,14 @@
 #include <unistd.h>
 
 ChromeCast::ChromeCast(const std::string& ip)
+: m_ip(ip)
 {
-	m_s = socket(PF_INET, SOCK_STREAM, 0);
-	if (m_s == -1)
-		throw std::runtime_error("could not connect");
-	struct sockaddr_in inaddr;
-	memset(&inaddr, 0, sizeof inaddr);
-	inaddr.sin_family = AF_INET;
-	inaddr.sin_port = htons(8009);
-	inaddr.sin_addr.s_addr = inet_addr(ip.c_str());
-	if (connect(m_s, (const struct sockaddr *)&inaddr,
-				sizeof inaddr) != 0)
-		throw std::runtime_error("could not connect");
-
-	SSL_CTX* x = SSL_CTX_new(TLSv1_client_method());
-	m_ssls = SSL_new(x);
-	SSL_set_fd(m_ssls, m_s);
-	SSL_set_mode(m_ssls, SSL_get_mode(m_ssls) | SSL_MODE_AUTO_RETRY);
-	SSL_set_connect_state(m_ssls);
-	if (SSL_connect(m_ssls) != 1)
-		throw std::runtime_error("could not connect ssl");
-	m_tread = std::thread(&ChromeCast::_read, this);
+	connect();
 }
 
 ChromeCast::~ChromeCast()
 {
-	m_tread.join();
-	if (m_s != -1)
-		close(m_s);
+	disconnect();
 }
 
 void ChromeCast::setMediaStatusCallback(std::function<void(const std::string&,
@@ -50,6 +30,30 @@ unsigned int ChromeCast::_request_id()
 	request_id = m_request_id++;
 	m_mutex.unlock();
 	return request_id;
+}
+
+void ChromeCast::connect()
+{
+	m_s = socket(PF_INET, SOCK_STREAM, 0);
+	if (m_s == -1)
+		throw std::runtime_error("could not connect");
+	struct sockaddr_in inaddr;
+	memset(&inaddr, 0, sizeof inaddr);
+	inaddr.sin_family = AF_INET;
+	inaddr.sin_port = htons(8009);
+	inaddr.sin_addr.s_addr = inet_addr(m_ip.c_str());
+	if (::connect(m_s, (const struct sockaddr *)&inaddr,
+				sizeof inaddr) != 0)
+		throw std::runtime_error("could not connect");
+
+	SSL_CTX* x = SSL_CTX_new(TLSv1_client_method());
+	m_ssls = SSL_new(x);
+	SSL_set_fd(m_ssls, m_s);
+	SSL_set_mode(m_ssls, SSL_get_mode(m_ssls) | SSL_MODE_AUTO_RETRY);
+	SSL_set_connect_state(m_ssls);
+	if (SSL_connect(m_ssls) != 1)
+		throw std::runtime_error("could not connect ssl");
+	m_tread = std::thread(&ChromeCast::_read, this);
 }
 
 void ChromeCast::init()
@@ -99,6 +103,13 @@ void ChromeCast::init()
 		send("urn:x-cast:com.google.cast.tp.connection", msg);
 	}
 	m_init = true;
+}
+
+void ChromeCast::disconnect()
+{
+	m_tread.join();
+	if (m_s != -1)
+		close(m_s);
 }
 
 void ChromeCast::load(const std::string& url, const std::string& title, const std::string& uuid)

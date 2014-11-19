@@ -11,10 +11,12 @@ class ChromeCast {
 	public:
 		ChromeCast(const std::string& ip);
 		~ChromeCast();
+		void connect();
+		void init();
+		void disconnect();
 
 		void setMediaStatusCallback(std::function<void(const std::string&,
 					const std::string&, const std::string&)> func);
-		void init();
 		void load(const std::string& url, const std::string& title, const std::string& uuid);
 		void play();
 		void pause();
@@ -27,6 +29,7 @@ class ChromeCast {
 		Json::Value send(const std::string& namespace_, const Json::Value& payload);
 		void _read();
 
+		std::string m_ip;
 		int m_s;
 		SSL* m_ssls;
 		std::mutex m_mutex;
