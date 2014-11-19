@@ -11,8 +11,8 @@ class ChromeCast {
 	public:
 		ChromeCast(const std::string& ip);
 		~ChromeCast();
-		void connect();
-		void init();
+		bool connect();
+		bool init();
 		void disconnect();
 
 		void setMediaStatusCallback(std::function<void(const std::string&,
@@ -33,6 +33,7 @@ class ChromeCast {
 		int m_s;
 		SSL* m_ssls;
 		std::mutex m_mutex;
+		std::mutex m_ssl_mutex;
 		std::thread m_tread;
 		std::map<unsigned int, std::pair<std::condition_variable*, Json::Value>> m_wait;
 

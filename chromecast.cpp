@@ -10,7 +10,8 @@
 ChromeCast::ChromeCast(const std::string& ip)
 : m_ip(ip)
 {
-	connect();
+	if (!connect())
+		throw std::runtime_error("could not connect");
 }
 
 ChromeCast::~ChromeCast()
@@ -33,32 +34,49 @@ unsigned int ChromeCast::_request_id()
 	return request_id;
 }
 
-void ChromeCast::connect()
+bool ChromeCast::connect()
 {
 	m_s = socket(PF_INET, SOCK_STREAM, 0);
 	if (m_s == -1)
-		throw std::runtime_error("could not connect");
+		return false;
 	struct sockaddr_in inaddr;
 	memset(&inaddr, 0, sizeof inaddr);
 	inaddr.sin_family = AF_INET;
 	inaddr.sin_port = htons(8009);
 	inaddr.sin_addr.s_addr = inet_addr(m_ip.c_str());
 	if (::connect(m_s, (const struct sockaddr *)&inaddr,
-				sizeof inaddr) != 0)
-		throw std::runtime_error("could not connect");
+				sizeof inaddr) != 0) {
+		close(m_s);
+		return false;
+	}
 
 	SSL_CTX* x = SSL_CTX_new(TLSv1_client_method());
 	m_ssls = SSL_new(x);
 	SSL_set_fd(m_ssls, m_s);
 	SSL_set_mode(m_ssls, SSL_get_mode(m_ssls) | SSL_MODE_AUTO_RETRY);
 	SSL_set_connect_state(m_ssls);
-	if (SSL_connect(m_ssls) != 1)
-		throw std::runtime_error("could not connect ssl");
+	if (SSL_connect(m_ssls) != 1) {
+		SSL_free(m_ssls);
+		m_ssls = NULL;
+		close(m_s);
+		return false;
+	}
 	m_tread = std::thread(&ChromeCast::_read, this);
+	m_init = false;
+	return true;
 }
 
-void ChromeCast::init()
+bool ChromeCast::init()
 {
+	static std::mutex m_init_mutex;
+	std::lock_guard<std::mutex> lock(m_init_mutex);
+	if (m_init)
+		return true;
+
+	if (!m_ssls)
+		if (!connect())
+			return false;
+
 	m_destination_id = "receiver-0";
 	m_session_id = "";
 	Json::Value response;
@@ -105,6 +123,7 @@ void ChromeCast::init()
 		send("urn:x-cast:com.google.cast.tp.connection", msg);
 	}
 	m_init = true;
+	return true;
 }
 
 void ChromeCast::disconnect()
@@ -112,6 +131,11 @@ void ChromeCast::disconnect()
 	m_tread.join();
 	if (m_s != -1)
 		close(m_s);
+	if (m_ssls)
+		SSL_free(m_ssls);
+	m_s = -1;
+	m_ssls = NULL;
+	m_init = false;
 }
 
 Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& payload)
@@ -153,7 +177,18 @@ Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& p
 			msg.namespace_().c_str(),
 			msg.payload_utf8().c_str()
 		  );
-	int w = SSL_write(m_ssls, foo.c_str(), foo.size());
+
+	int w;
+	m_ssl_mutex.lock();
+	if (m_ssls) {
+		w = SSL_write(m_ssls, foo.c_str(), foo.size());
+		if (w == -1) {
+			syslog(LOG_DEBUG, "SSL_write eror");
+			disconnect();
+		}
+	} else
+		w = -1;
+	m_ssl_mutex.unlock();
 
 	if (wait && w == -1)
 	{
@@ -180,9 +215,19 @@ void ChromeCast::_read()
 	while (true)
 	{
 		char pktlen[4];
-		for (int r = 0; r < sizeof pktlen; ++r) {
+		int r;
+		for (r = 0; r < sizeof pktlen; ++r)
 			if (SSL_read(m_ssls, pktlen + r, 1) < 1)
-				return;
+				break;
+		if (r != sizeof pktlen) {
+			syslog(LOG_ERR, "SSL_read error");
+			m_mutex.lock();
+			for (auto& item : m_wait) {
+				item.second.second = Json::Value();
+				item.second.first->notify_all();
+			}
+			m_mutex.unlock();
+			return;
 		}
 
 		unsigned int len;
@@ -196,6 +241,16 @@ void ChromeCast::_read()
 			if (r < 1)
 				break;
 			buf.append(b, r);
+		}
+		if (buf.size() != len) {
+			syslog(LOG_ERR, "SSL_read error");
+			m_mutex.lock();
+			for (auto& item : m_wait) {
+				item.second.second = Json::Value();
+				item.second.first->notify_all();
+			}
+			m_mutex.unlock();
+			return;
 		}
 
 		extensions::core_api::cast_channel::CastMessage msg;
@@ -311,7 +366,7 @@ std::string ChromeCast::getSocketName() const
 	return inet_ntoa(addr.sin_addr);
 }
 
-bool isPlayerState(const Json::Value& response, const std::string& playerState) 
+bool isPlayerState(const Json::Value& response, const std::string& playerState)
 {
 	if (response.isMember("type") && response["type"].asString() == "MEDIA_STATUS")
 	{
@@ -328,8 +383,8 @@ bool isPlayerState(const Json::Value& response, const std::string& playerState)
 
 bool ChromeCast::load(const std::string& url, const std::string& title, const std::string& uuid)
 {
-	if (!m_init)
-		init();
+	if (!m_init && !init())
+		return false;
 	Json::Value msg, response;
 	msg["type"] = "LOAD";
 	msg["requestId"] = _request_id();
@@ -347,8 +402,8 @@ bool ChromeCast::load(const std::string& url, const std::string& title, const st
 
 bool ChromeCast::pause()
 {
-	if (!m_init)
-		init();
+	if (!m_init && !init())
+		return false;
 	Json::Value msg, response;
 	msg["type"] = "PAUSE";
 	msg["requestId"] = _request_id();
@@ -359,8 +414,8 @@ bool ChromeCast::pause()
 
 bool ChromeCast::play()
 {
-	if (!m_init)
-		init();
+	if (!m_init && !init())
+		return false;
 	Json::Value msg, response;
 	msg["type"] = "PLAY";
 	msg["requestId"] = _request_id();
@@ -371,8 +426,8 @@ bool ChromeCast::play()
 
 bool ChromeCast::stop()
 {
-	if (!m_init)
-		init();
+	if (!m_init && !init())
+		return false;
 	Json::Value msg, response;
 	msg["type"] = "STOP";
 	msg["requestId"] = _request_id();
