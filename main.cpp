@@ -84,6 +84,6 @@ int main(int argc, char* argv[])
 
 void usage()
 {
-	printf("%s --chomecast <ip> [ --port <number> ] [ --playlist <path> ] [ --shuffle ] [ --repeat ] [ --repeat-all ]\n", __progname);
+	printf("%s --chromecast <ip> [ --port <number> ] [ --playlist <path> ] [ --shuffle ] [ --repeat ] [ --repeat-all ]\n", __progname);
 	exit(1);
 }
