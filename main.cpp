@@ -4,6 +4,7 @@
 #include "cast_channel.pb.h"
 #include <syslog.h>
 #include <getopt.h>
+#include <fstream>
 
 void usage();
 extern char* __progname;
@@ -21,8 +22,10 @@ int main(int argc, char* argv[])
 	Playlist playlist;
 
 	static struct option longopts[] = {
+		{ "help", no_argument, NULL, 'h' },
 		{ "chromecast", required_argument, NULL, 'c' },
-		{ "port", required_argument, NULL, 'P' },
+		{ "port", required_argument, NULL, 'p' },
+		{ "playlist", required_argument, NULL, 'P' },
 		{ "shuffle", no_argument, NULL, 's' },
 		{ "repeat", no_argument, NULL, 'r' },
 		{ "repeat-all", no_argument, NULL, 'R' },
@@ -30,13 +33,20 @@ int main(int argc, char* argv[])
 	};
 
 	int ch;
-	while ((ch = getopt_long(argc, argv, "c:P:srR", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hc:p:P:srR", longopts, NULL)) != -1) {
 		switch (ch) {
 			case 'c':
 				ip = optarg;
 				break;
-			case 'P':
+			case 'p':
 				port = strtoul(optarg, NULL, 10);
+				break;
+			case 'P':
+				{
+					std::ifstream input(optarg);
+					for (std::string line; getline(input, line);)
+						playlist.insert(line);
+				}
 				break;
 			case 's':
 				playlist.setShuffle(true);
@@ -84,6 +94,7 @@ int main(int argc, char* argv[])
 
 void usage()
 {
-	printf("%s --chromecast <ip> [ --port <number> ] [ --playlist <path> ] [ --shuffle ] [ --repeat ] [ --repeat-all ]\n", __progname);
+	printf("%s --chromecast <ip> [ --port <number> ] [ --playlist <path> ]\n"
+			"\t[ --shuffle ] [ --repeat ] [ --repeat-all ]\n", __progname);
 	exit(1);
 }
