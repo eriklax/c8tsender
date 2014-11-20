@@ -72,20 +72,30 @@ bool ChromeCast::init()
 	if (m_init)
 		return true;
 
-	if (!m_ssl)
-		if (!connect())
-			return false;
-
+	_release_waiters();
 	m_destination_id = "receiver-0";
 	m_session_id = "";
 
 	Json::Value msg, response;
 
-	msg = Json::objectValue;
-	msg["type"] = "CONNECT";
-	msg["origin"] = Json::Value(Json::objectValue);
-	send("urn:x-cast:com.google.cast.tp.connection", msg);
-	if (!m_ssl) return false;
+	bool retry = false;
+	do {
+		if (!m_ssl)
+			if (!connect())
+				return false;
+		msg = Json::objectValue;
+		msg["type"] = "CONNECT";
+		msg["origin"] = Json::Value(Json::objectValue);
+		send("urn:x-cast:com.google.cast.tp.connection", msg);
+		if (!m_ssl) {
+			if (retry)
+				return false;
+			retry = true;
+			syslog(LOG_DEBUG, "Retrying connect");
+			continue;
+		}
+		break;
+	} while (0);
 
 	msg = Json::objectValue;
 	msg["type"] = "GET_STATUS";
@@ -222,12 +232,7 @@ void ChromeCast::_read()
 				break;
 		if (r != sizeof pktlen) {
 			syslog(LOG_ERR, "SSL_read error");
-			m_mutex.lock();
-			for (auto& item : m_wait) {
-				item.second.second = Json::Value();
-				item.second.first->notify_all();
-			}
-			m_mutex.unlock();
+			_release_waiters();
 			return;
 		}
 
@@ -245,12 +250,7 @@ void ChromeCast::_read()
 		}
 		if (buf.size() != len) {
 			syslog(LOG_ERR, "SSL_read error");
-			m_mutex.lock();
-			for (auto& item : m_wait) {
-				item.second.second = Json::Value();
-				item.second.first->notify_all();
-			}
-			m_mutex.unlock();
+			_release_waiters();
 			return;
 		}
 
@@ -290,13 +290,8 @@ void ChromeCast::_read()
 		{
 			if (response["type"].asString() == "CLOSE")
 			{
-				m_mutex.lock();
+				_release_waiters();
 				m_init = false;
-				for (auto& item : m_wait) {
-					item.second.second = Json::Value();
-					item.second.first->notify_all();
-				}
-				m_mutex.unlock();
 			}
 		}
 
@@ -451,4 +446,14 @@ unsigned int ChromeCast::_request_id()
 	request_id = m_request_id++;
 	m_mutex.unlock();
 	return request_id;
+}
+
+void ChromeCast::_release_waiters()
+{
+	m_mutex.lock();
+	for (auto& item : m_wait) {
+		item.second.second = Json::Value();
+		item.second.first->notify_all();
+	}
+	m_mutex.unlock();
 }

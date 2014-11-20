@@ -29,6 +29,7 @@ class ChromeCast {
 
 		Json::Value send(const std::string& namespace_, const Json::Value& payload);
 		void _read();
+		void _release_waiters();
 
 		std::string m_ip;
 		int m_s;
