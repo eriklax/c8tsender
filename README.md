@@ -8,7 +8,7 @@ Requirements
 
 Installation
 ------------
-c8tsender requires `ffmpeg` in the $PWD (in the same directory) in order to remux files to mkv, and convert the sound to aac), the flags to `ffmpeg` are not in away way optimized for you, but they worked for me.
+c8tsender requires `ffmpeg` in the $PATH or $PWD (in the same directory) in order to remux files to mkv, and convert the sound to aac), the flags to `ffmpeg` are not in away way optimized for you, but they worked for me.
 
 Bonus: Install shell extension in OSX
 -----------------------------------
