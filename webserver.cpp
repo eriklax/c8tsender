@@ -339,7 +339,7 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 	}
 
 	std::vector<const char*> cbuf;
-	cbuf.push_back("./ffmpeg");
+	cbuf.push_back("ffmpeg");
 	cbuf.push_back("-y");
 	cbuf.push_back("-i"); cbuf.push_back(path.c_str());
 	cbuf.push_back("-vcodec"); cbuf.push_back("copy");
@@ -354,9 +354,13 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 	pid_t pid = fork();
 	if (pid == (pid_t)0)
 	{
+		// Include current PWD
+		char* env;
+		asprintf(&env, ".:%s", getenv("PATH"));
+		setenv("PATH", env, 1);
+
 		close(mypipe[0]);
 		close(fileno(stderr));
-		// TODO: closefrom(3)
 		dup2(mypipe[1], fileno(stdout));
 		execvp(cbuf[0], (char* const*)&cbuf[0]);
 		_exit(1);
