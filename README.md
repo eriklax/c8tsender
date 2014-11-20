@@ -3,8 +3,6 @@ c8t sender is a Google Chromecast sender server with a built-in REST API and res
 Requirements
 ------------
 * It's a C++11 project (go figure)
-* CMake
-* jsoncpp (amalgamate.py version in jsoncpp/dist) (github://open-source-parsers/jsoncpp)
 * libmicrohttpd (gnu.org)
 * ffmpeg (http://ffmpeg.org/)
 
