@@ -308,7 +308,7 @@ struct mhd_forkctx
 
 void mhd_forkctx_clean(void* cls)
 {
-	mhd_forkctx* f = (mhd_forkctx*)cls;
+	mhd_forkctx* f = static_cast<mhd_forkctx*>(cls);
 	int status;
 	kill(f->pid, SIGKILL);
 	waitpid(f->pid, &status, 0);
@@ -318,7 +318,7 @@ void mhd_forkctx_clean(void* cls)
 
 ssize_t mhd_forkctx_read(void* cls, uint64_t pos, char* buf, size_t max)
 {
-	mhd_forkctx* f = (mhd_forkctx*)cls;
+	mhd_forkctx* f = static_cast<mhd_forkctx*>(cls);
 	int r = read(f->fd, buf, max);
 	if (r == 0)
 		return MHD_CONTENT_READER_END_OF_STREAM;
