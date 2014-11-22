@@ -20,9 +20,9 @@ class Webserver {
 		int GET_pause(struct MHD_Connection* connection);
 		int GET_resume(struct MHD_Connection* connection);
 		int GET_stop(struct MHD_Connection* connection);
-		int GET_play(struct MHD_Connection* connection, const std::string& uuid);
+		int GET_play(struct MHD_Connection* connection, const std::string& uuid, time_t startTime = 0);
 		int GET_next(struct MHD_Connection* connection);
-		int GET_stream(struct MHD_Connection* connection, const std::string& uuid);
+		int GET_stream(struct MHD_Connection* connection, const std::string& uuid, time_t startTime = 0);
 		int GET_streaminfo(struct MHD_Connection* connection);
 
 		bool isPrivileged(struct MHD_Connection* connection);

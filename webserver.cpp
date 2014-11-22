@@ -110,8 +110,19 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 			return GET_file(connection, "htdocs/bootstrap.min.js", "text/javascript");
 		if (strcmp(url, "/jquery-2.1.1.min.js") == 0)
 			return GET_file(connection, "htdocs/jquery-2.1.1.min.js", "text/javascript");
-		if (strncmp(url, "/play/", 6) == 0)
-			return GET_play(connection, url + 6);
+		if (strncmp(url, "/play/", 6) == 0) {
+			std::string uuid = url + 6;
+			time_t startTime = 0;
+
+			// /play/uuid/seek
+			std::string::size_type slash = uuid.find('/');
+			if (slash != std::string::npos) {
+				startTime = strtoul(uuid.substr(slash + 1).c_str(), NULL, 10);
+				uuid.erase(slash);
+			}
+
+			return GET_play(connection, uuid, startTime);
+		}
 		if (strcmp(url, "/next") == 0)
 			return GET_next(connection);
 		if (strcmp(url, "/streaminfo") == 0)
@@ -130,8 +141,19 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 			return GET_playlist_repeatall(connection, strcmp(url + 20, "1") == 0);
 		if (strncmp(url, "/playlist/shuffle/", 18) == 0)
 			return GET_playlist_shuffle(connection, strcmp(url + 18, "1") == 0);
-		if (strncmp(url, "/stream/", 8) == 0)
-			return GET_stream(connection, url + 8);
+		if (strncmp(url, "/stream/", 8) == 0) {
+			std::string uuid = url + 8;
+			time_t startTime = 0;
+
+			// /stream/uuid/seek
+			std::string::size_type slash = uuid.find('/');
+			if (slash != std::string::npos) {
+				startTime = strtoul(uuid.substr(slash + 1).c_str(), NULL, 10);
+				uuid.erase(slash);
+			}
+
+			return GET_stream(connection, uuid, startTime);
+		}
 	}
 	return MHD_NO;
 }
@@ -257,7 +279,7 @@ int Webserver::GET_stop(struct MHD_Connection* connection)
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
-int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uuid)
+int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uuid, time_t startTime)
 {
 	std::string name;
 	try {
@@ -271,7 +293,8 @@ int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uu
 		return mhd_queue_json(connection, 500, json);
 	}
 	if (!m_sender.load(
-			"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + uuid,
+			"http://" + m_sender.getSocketName() + ":" + std::to_string(m_port) + "/stream/" + uuid +
+				(startTime ? "/" + std::to_string(startTime) : ""),
 			name, uuid))
 		return mhd_queue_json(connection, 500, Json::Value());
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
@@ -325,7 +348,7 @@ ssize_t mhd_forkctx_read(void* cls, uint64_t pos, char* buf, size_t max)
 	return r;
 }
 
-int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& uuid)
+int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& uuid, time_t startTime)
 {
 	std::string path;
 	try {
@@ -338,9 +361,13 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 		return mhd_queue_json(connection, 500, json);
 	}
 
+	std::string time = std::to_string(startTime);
 	std::vector<const char*> cbuf;
 	cbuf.push_back("ffmpeg");
 	cbuf.push_back("-y");
+	if (startTime) {
+		cbuf.push_back("-ss"); cbuf.push_back(time.c_str());
+	}
 	cbuf.push_back("-i"); cbuf.push_back(path.c_str());
 	cbuf.push_back("-vcodec"); cbuf.push_back("copy");
 	cbuf.push_back("-acodec"); cbuf.push_back("aac");
