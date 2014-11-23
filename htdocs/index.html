@@ -34,6 +34,17 @@
 		<script type="text/javascript">
 			var streamInfoTimer = null;
 			var playlistUUID = null;
+			function timetoseconds(timestr) {
+				return parseInt(timestr.split(':').reverse().reduce(function (p, c, i, arr) {
+						p = parseInt(p);
+						c = parseInt(c);
+						if (i == 1) c *= 60;
+						if (i == 2) c *= 3600;
+						if (i == 3) c *= 3600 * 24;
+						if (i >= 4) c = 0;
+						return p + c;
+				}));
+			}
 			function reloadPlaylist() {
 				$.ajax({
 					dataType: 'json',
@@ -134,12 +145,12 @@
 					var uuid = $("#playlist div.highlight").attr('id');
 					if (!uuid)
 						return;
-					var seek = prompt('Seek to (seconds):');
+					var seek = prompt('Seek to (hh:mm:ss or seconds):');
 					if (!seek)
 						return;
 					$.ajax({
 						dataType: 'json',
-						url: '/play/' + uuid + '/' + seek
+						url: '/play/' + uuid + '/' + timetoseconds(seek) 
 					});
 				});
 			});
