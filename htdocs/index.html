@@ -132,13 +132,15 @@
 				});
 				$('#seek').on('click', function() {
 					var uuid = $("#playlist div.highlight").attr('id');
+					if (!uuid)
+						return;
 					var seek = prompt('Seek to (seconds):');
-					if (uuid && seek) {
-						$.ajax({
-							dataType: 'json',
-							url: '/play/' + uuid + '/' + seek
-						});
-					}
+					if (!seek)
+						return;
+					$.ajax({
+						dataType: 'json',
+						url: '/play/' + uuid + '/' + seek
+					});
 				});
 			});
 		</script>
