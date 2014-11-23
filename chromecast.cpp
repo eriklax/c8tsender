@@ -95,7 +95,7 @@ bool ChromeCast::init()
 			continue;
 		}
 		break;
-	} while (0);
+	} while (1);
 
 	msg = Json::objectValue;
 	msg["type"] = "GET_STATUS";
