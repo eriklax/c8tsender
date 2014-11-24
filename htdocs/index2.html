@@ -11,9 +11,6 @@
 		<title>Chromecast Playlist</title>
 		<style type="text/css">
 			body { padding-top: 50px; }
-			.btn-xs {
-				margin-top: 5px;
-			}
 			.playlistitem {
 				width: 100%;
 				text-overflow: ellipsis;
@@ -35,19 +32,29 @@
 			}
 		</style>
 		<script type="text/javascript">
+			function seconds2time (seconds) {
+				var hours   = Math.floor(seconds / 3600);
+				var minutes = Math.floor((seconds - (hours * 3600)) / 60);
+				var seconds = seconds - (hours * 3600) - (minutes * 60);
+				var time = "";
+
+				if (hours != 0) {
+					time = hours+":";
+				}
+				if (minutes != 0 || time !== "") {
+					minutes = (minutes < 10 && time !== "") ? "0"+minutes : String(minutes);
+					time += minutes+":";
+				}
+				if (time === "") {
+					time = seconds+"s";
+				}
+				else {
+					time += (seconds < 10) ? "0"+seconds : String(seconds);
+				}
+				return time;
+			}
 			var streamInfoTimer = null;
 			var playlistUUID = null;
-			function timetoseconds(timestr) {
-				return parseInt(timestr.split(':').reverse().reduce(function (p, c, i, arr) {
-						p = parseInt(p);
-						c = parseInt(c);
-						if (i == 1) c *= 60;
-						if (i == 2) c *= 3600;
-						if (i == 3) c *= 3600 * 24;
-						if (i >= 4) c = 0;
-						return p + c;
-				}));
-			}
 			function reloadPlaylist() {
 				$.ajax({
 					dataType: 'json',
@@ -67,7 +74,8 @@
 						var track = playlist.tracks[i];
 						var div = $('<div />');
 						div.addClass('playlistitem');
-						div.text(track.name);
+						div.append($('<span style="float:left;display:inline;" />').text(track.name));
+						div.append($('<span style="float:right;display:inline;" />').text(seconds2time(track.duration)));
 						div.attr('id', track.uuid);
 						div.on('click', function() {
 							var uuid = $(this).attr('id');
@@ -90,10 +98,6 @@
 					url: '/streaminfo'
 				})
 				.done(function (obj) {
-					if (obj.subtitles)
-						$("#cc").addClass('btn-success');
-					else
-						$("#cc").removeClass('btn-success');
 					if (obj.playerstate == 'PLAYING' || obj.playerstate == 'BUFFERING') {
 						$("#resume").removeClass('btn-primary');
 						$("#pause").addClass('btn-primary');
@@ -148,21 +152,15 @@
 					$.ajax({ dataType: 'json', url: '/playlist/repeatall/' + ($(this).hasClass('btn-success')?'0':'1') })
 					$(this).toggleClass('btn-success');
 				});
-				$('#cc').on('click', function() {
-					$.ajax({ dataType: 'json', url: '/subtitles/' + ($(this).hasClass('btn-success')?'0':'1') })
-					$(this).toggleClass('btn-success');
-				});
 				$('#seek').on('click', function() {
 					var uuid = $("#playlist div.highlight").attr('id');
-					if (!uuid)
-						return;
-					var seek = prompt('Seek to (hh:mm:ss or seconds):');
-					if (!seek)
-						return;
-					$.ajax({
-						dataType: 'json',
-						url: '/play/' + uuid + '/' + timetoseconds(seek) 
-					});
+					var seek = prompt('Seek to (seconds):');
+					if (uuid && seek) {
+						$.ajax({
+							dataType: 'json',
+							url: '/play/' + uuid + '/' + seek
+						});
+					}
 				});
 			});
 		</script>
@@ -181,10 +179,9 @@
 					<button type="button" class="glyphicon glyphicon-step-forward btn btn-sm" id="next" title="Next"></button>
 				</div>
 				<div class="btn-group pull-right">
-					<button type="button" class="glyphicon glyphicon-subtitles btn btn-xs" id="cc" title="Subtitles"></button>
-					<button type="button" class="glyphicon glyphicon-random btn btn-xs" id="shuffle" title="Shuffle"></button>
-					<button type="button" class="glyphicon glyphicon-repeat btn btn-xs" id="repeat" title="Repeat"></button>
-					<button type="button" class="glyphicon glyphicon-retweet btn btn-xs" id="repeatall" title="Repeat all"></button>
+					<button type="button" class="glyphicon glyphicon-random btn btn-sm" id="shuffle" title="Shuffle"></button>
+					<button type="button" class="glyphicon glyphicon-repeat btn btn-sm" id="repeat" title="Repeat"></button>
+					<button type="button" class="glyphicon glyphicon-retweet btn btn-sm" id="repeatall" title="Repeat all"></button>
 				</div>
 			</p>
 			</div>
