@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
 				try {
 					std::lock_guard<std::mutex> lock(playlist.getMutex());
 					PlaylistItem track = playlist.getNextTrack(uuid);
-					std::thread foo([&chromecast, port, track](){
+					std::thread foo([&chromecast, port, track]() {
 						chromecast.load("http://" + chromecast.getSocketName() + ":" + std::to_string(port) + "/stream/" + track.getUUID(),
 							track.getName(), track.getUUID());
 					});

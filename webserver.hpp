@@ -8,7 +8,7 @@
 class Webserver {
 	public:
 		Webserver(unsigned short port, ChromeCast& sender, Playlist& playlist);
-		~Webserver();	
+		~Webserver();
 
 	private:
 		int GET_file(struct MHD_Connection* connection, const std::string& file, const std::string& contentType);
@@ -50,7 +50,7 @@ class Webserver {
 
 		ChromeCast& m_sender;
 		Playlist& m_playlist;
-		
+
 		short int m_port;
 		struct MHD_Daemon* mp_d;
 };
