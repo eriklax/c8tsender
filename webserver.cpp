@@ -133,6 +133,8 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 			return GET_resume(connection);
 		if (strcmp(url, "/stop") == 0)
 			return GET_stop(connection);
+		if (strncmp(url, "/subtitles/", 11) == 0)
+			return GET_subtitles(connection, strcmp(url + 11, "1") == 0);
 		if (strcmp(url, "/playlist") == 0)
 			return GET_playlist(connection);
 		if (strncmp(url, "/playlist/repeat/", 17) == 0)
@@ -288,6 +290,13 @@ int Webserver::GET_resume(struct MHD_Connection* connection)
 int Webserver::GET_stop(struct MHD_Connection* connection)
 {
 	if (!m_sender.stop())
+		return mhd_queue_json(connection, 500, Json::Value());
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
+}
+
+int Webserver::GET_subtitles(struct MHD_Connection* connection, bool value)
+{
+	if (!m_sender.setSubtitles(value))
 		return mhd_queue_json(connection, 500, Json::Value());
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
@@ -485,6 +494,7 @@ int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 	Json::Value json;
 	json["uuid"] = m_sender.getUUID();
 	json["playerstate"] = m_sender.getPlayerState();
+	json["subtitles"] = m_sender.hasSubtitles();
 	json["playlist"] = m_playlist.getUUID();
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }

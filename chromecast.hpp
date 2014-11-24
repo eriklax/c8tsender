@@ -19,9 +19,11 @@ class ChromeCast {
 		bool play();
 		bool pause();
 		bool stop();
+		bool setSubtitles(bool status);
 
 		const std::string& getUUID() const;
 		const std::string& getPlayerState() const;
+		bool hasSubtitles() const;
 		std::string getSocketName() const;
 	private:
 		bool connect();
@@ -42,6 +44,7 @@ class ChromeCast {
 
 		std::string m_uuid;
 		std::string m_player_state;
+		bool m_subtitles = false;
 		std::string m_session_id;
 		unsigned int m_media_session_id;
 		unsigned int _request_id();

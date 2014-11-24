@@ -329,6 +329,9 @@ void ChromeCast::_read()
 				{
 					std::string uuid = m_uuid;
 					Json::Value& status = response["status"][0u];
+					m_subtitles = false;
+					if (status.isMember("activeTrackIds") && status["activeTrackIds"].isValidIndex(0u))
+						m_subtitles = true;
 					m_player_state = status["playerState"].asString();
 					if (status["playerState"] == "IDLE")
 						m_uuid = "";
@@ -353,6 +356,11 @@ const std::string& ChromeCast::getUUID() const
 const std::string& ChromeCast::getPlayerState() const
 {
 	return m_player_state;
+}
+
+bool ChromeCast::hasSubtitles() const
+{
+	return m_subtitles;
 }
 
 std::string ChromeCast::getSocketName() const
@@ -401,8 +409,10 @@ bool ChromeCast::load(const std::string& url, const std::string& title, const st
 	msg["media"]["tracks"][0]["trackContentId"] = "trk0002";
 	msg["media"]["tracks"][0]["trackContentId"] = std::string(url).replace(25, 6, "subs");
 	msg["media"]["tracks"][0]["trackContentType"] = "text/vtt";
+	/*
 	msg["activeTrackIds"] = Json::arrayValue;
 	msg["activeTrackIds"][0] = 1;
+	*/
 	msg["autoplay"] = true;
 	msg["currentTime"] = 0;
 	response = send("urn:x-cast:com.google.cast.media", msg);
@@ -443,6 +453,21 @@ bool ChromeCast::stop()
 	msg["mediaSessionId"] = m_media_session_id;
 	response = send("urn:x-cast:com.google.cast.media", msg);
 	return isPlayerState(response, "IDLE");
+}
+
+bool ChromeCast::setSubtitles(bool status)
+{
+	if (!m_init && !init())
+		return false;
+	Json::Value msg, response;
+	msg["type"] = "EDIT_TRACKS_INFO";
+	msg["requestId"] = _request_id();
+	msg["mediaSessionId"] = m_media_session_id;
+	msg["activeTrackIds"] = Json::arrayValue;
+	if (status)
+		msg["activeTrackIds"][0] = 1;
+	response = send("urn:x-cast:com.google.cast.media", msg);
+	return true;
 }
 
 void ChromeCast::setMediaStatusCallback(std::function<void(const std::string&,
