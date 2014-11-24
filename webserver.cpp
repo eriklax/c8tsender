@@ -10,6 +10,7 @@
 #include <syslog.h>
 
 std::string execvp(const std::vector<std::string>& args);
+extern const char* ffmpegpath();
 
 Webserver::Webserver(unsigned short port, ChromeCast& sender, Playlist& playlist)
 : m_port(port)
@@ -387,7 +388,7 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 
 	std::string time = std::to_string(startTime);
 	std::vector<const char*> cbuf;
-	cbuf.push_back("ffmpeg");
+	cbuf.push_back(ffmpegpath());
 	cbuf.push_back("-y");
 	if (startTime) {
 		cbuf.push_back("-ss"); cbuf.push_back(time.c_str());
@@ -406,11 +407,6 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 	pid_t pid = fork();
 	if (pid == (pid_t)0)
 	{
-		// Include current PWD
-		char* env;
-		asprintf(&env, ".:%s", getenv("PATH"));
-		setenv("PATH", env, 1);
-
 		close(mypipe[0]);
 		close(fileno(stderr));
 		dup2(mypipe[1], fileno(stdout));
@@ -446,7 +442,7 @@ int Webserver::GET_subs(struct MHD_Connection* connection, const std::string& uu
 
 	std::string time = std::to_string(startTime);
 	std::vector<const char*> cbuf;
-	cbuf.push_back("ffmpeg");
+	cbuf.push_back(ffmpegpath());
 	cbuf.push_back("-y");
 	if (startTime) {
 		cbuf.push_back("-ss"); cbuf.push_back(time.c_str());
@@ -483,11 +479,6 @@ int Webserver::GET_subs(struct MHD_Connection* connection, const std::string& uu
 	pid_t pid = fork();
 	if (pid == (pid_t)0)
 	{
-		// Include current PWD
-		char* env;
-		asprintf(&env, ".:%s", getenv("PATH"));
-		setenv("PATH", env, 1);
-
 		close(mypipe[0]);
 		close(fileno(stderr));
 		dup2(mypipe[1], fileno(stdout));

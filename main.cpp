@@ -9,6 +9,13 @@
 void usage();
 extern char* __progname;
 
+const char* ffmpegpath()
+{
+	if (access("./ffmpeg", F_OK) == 0)
+		return "./ffmpeg";
+	return "ffmpeg";
+}
+
 int main(int argc, char* argv[])
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
