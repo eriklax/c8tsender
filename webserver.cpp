@@ -9,6 +9,8 @@
 #include <streambuf>
 #include <syslog.h>
 
+std::string execvp(const std::vector<std::string>& args);
+
 Webserver::Webserver(unsigned short port, ChromeCast& sender, Playlist& playlist)
 : m_port(port)
 , m_sender(sender)
@@ -449,6 +451,25 @@ int Webserver::GET_subs(struct MHD_Connection* connection, const std::string& uu
 	if (startTime) {
 		cbuf.push_back("-ss"); cbuf.push_back(time.c_str());
 	}
+	std::string subs = path;
+	std::string subs_encoding;
+	if (subs.find_last_of(".") != std::string::npos) {
+		subs.erase(subs.find_last_of("."), std::string::npos);
+		subs += ".srt";
+		if (access(subs.c_str(), F_OK) == 0) {
+			path = subs;
+			std::string encoding = execvp({"file", "-bI", subs});
+			if (encoding.find("charset=") != std::string::npos) {
+				encoding.erase(0, encoding.find("charset=") + 8);
+				encoding.erase(encoding.find_last_not_of(" \r\n") + 1);
+				subs_encoding = encoding;
+			}
+		}
+		syslog(LOG_DEBUG, "Reading subtitles from %s (%s)", subs.c_str(), subs_encoding.c_str());
+	}
+	if (!subs_encoding.empty()) {
+		cbuf.push_back("-sub_charenc"); cbuf.push_back(subs_encoding.c_str());
+	}
 	cbuf.push_back("-i"); cbuf.push_back(path.c_str());
 	cbuf.push_back("-vn");
 	cbuf.push_back("-an");
@@ -497,4 +518,38 @@ int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 	json["subtitles"] = m_sender.hasSubtitles();
 	json["playlist"] = m_playlist.getUUID();
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+std::string execvp(const std::vector<std::string>& args)
+{
+	std::vector<const char*> cbuf;
+	for (std::vector<std::string>::const_iterator i = args.begin(); i != args.end(); ++i)
+		cbuf.push_back(i->c_str());
+	cbuf.push_back(0);
+
+	int mypipe[2];
+	pipe(mypipe);
+	pid_t pid = fork();
+	if (pid == (pid_t)0)
+	{
+		// Include current PWD
+		char* env;
+		asprintf(&env, ".:%s", getenv("PATH"));
+		setenv("PATH", env, 1);
+
+		close(mypipe[0]);
+		close(fileno(stderr));
+		dup2(mypipe[1], fileno(stdout));
+		execvp(cbuf[0], (char* const*)&cbuf[0]);
+		_exit(1);
+	}
+	close(mypipe[1]);
+	char buf[1024];
+	int r;
+	std::string result;
+	while ((r = read(mypipe[0], buf, sizeof buf)) > 0)
+		result.append(buf, r);
+	waitpid(pid, &r, 0);
+	close(mypipe[0]);
+	return result;
 }
