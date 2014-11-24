@@ -154,6 +154,19 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 
 			return GET_stream(connection, uuid, startTime);
 		}
+		if (strncmp(url, "/subs/", 6) == 0) {
+			std::string uuid = url + 6;
+			time_t startTime = 0;
+
+			// /stream/uuid/seek
+			std::string::size_type slash = uuid.find('/');
+			if (slash != std::string::npos) {
+				startTime = strtoul(uuid.substr(slash + 1).c_str(), NULL, 10);
+				uuid.erase(slash);
+			}
+
+			return GET_subs(connection, uuid, startTime);
+		}
 	}
 	return MHD_NO;
 }
@@ -371,6 +384,7 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 	cbuf.push_back("-i"); cbuf.push_back(path.c_str());
 	cbuf.push_back("-vcodec"); cbuf.push_back("copy");
 	cbuf.push_back("-acodec"); cbuf.push_back("aac");
+	cbuf.push_back("-scodec"); cbuf.push_back("webvtt");
 	cbuf.push_back("-strict"); cbuf.push_back("-2");
 	cbuf.push_back("-f"); cbuf.push_back("matroska");
 	cbuf.push_back("-");
@@ -398,6 +412,65 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 	f->fd = mypipe[0];
 	MHD_Response* response = MHD_create_response_from_callback(-1, 8192, &mhd_forkctx_read, f, &mhd_forkctx_clean);
 	MHD_add_response_header(response, "Content-Type", "video/x-matroska");
+	MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
+	int ret = MHD_queue_response(connection,
+			MHD_HTTP_OK,
+			response);
+	MHD_destroy_response(response);
+	return ret;
+}
+
+int Webserver::GET_subs(struct MHD_Connection* connection, const std::string& uuid, time_t startTime)
+{
+	std::string path;
+	try {
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+		const PlaylistItem& track = m_playlist.getTrack(uuid);
+		path = track.getPath();
+	} catch (std::runtime_error& e) {
+		Json::Value json;
+		json["error"] = e.what();
+		return mhd_queue_json(connection, 500, json);
+	}
+
+	std::string time = std::to_string(startTime);
+	std::vector<const char*> cbuf;
+	cbuf.push_back("ffmpeg");
+	cbuf.push_back("-y");
+	if (startTime) {
+		cbuf.push_back("-ss"); cbuf.push_back(time.c_str());
+	}
+	cbuf.push_back("-i"); cbuf.push_back(path.c_str());
+	cbuf.push_back("-vn");
+	cbuf.push_back("-an");
+	cbuf.push_back("-scodec"); cbuf.push_back("webvtt");
+	cbuf.push_back("-f"); cbuf.push_back("webvtt");
+	cbuf.push_back("-");
+	cbuf.push_back(0);
+
+	int mypipe[2];
+	pipe(mypipe);
+	pid_t pid = fork();
+	if (pid == (pid_t)0)
+	{
+		// Include current PWD
+		char* env;
+		asprintf(&env, ".:%s", getenv("PATH"));
+		setenv("PATH", env, 1);
+
+		close(mypipe[0]);
+		close(fileno(stderr));
+		dup2(mypipe[1], fileno(stdout));
+		execvp(cbuf[0], (char* const*)&cbuf[0]);
+		_exit(1);
+	}
+	close(mypipe[1]);
+	mhd_forkctx* f = new mhd_forkctx;
+	f->pid = pid;
+	f->fd = mypipe[0];
+	MHD_Response* response = MHD_create_response_from_callback(-1, 8192, &mhd_forkctx_read, f, &mhd_forkctx_clean);
+	MHD_add_response_header(response, "Content-Type", "text/vtt;charset=utf-8");
+	MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
 	int ret = MHD_queue_response(connection,
 			MHD_HTTP_OK,
 			response);
