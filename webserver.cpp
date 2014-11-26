@@ -3,7 +3,6 @@
 #include <sys/wait.h>
 #include <netinet/in.h>
 #include <signal.h>
-#include <microhttpd.h>
 #include <json/json.h>
 #include <fstream>
 #include <streambuf>
@@ -51,7 +50,7 @@ int mhd_queue_json(struct MHD_Connection* connection, int status_code, const Jso
 
 struct PostRequest
 {
-	bool recving;
+	bool receiving;
 	std::string read_post_data;
 };
 
@@ -69,11 +68,11 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 		PostRequest* request = static_cast<PostRequest*>(*ptr);
 		if (!request) {
 			request = new PostRequest;
-			request->recving = false;
+			request->receiving = false;
 			*ptr = request;
 		}
-		if (!request->recving) {
-			request->recving = true;
+		if (!request->receiving) {
+			request->receiving = true;
 			return MHD_YES;
 		} else {
 			if (*upload_data_size != 0) {
