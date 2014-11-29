@@ -459,8 +459,8 @@ int Webserver::GET_subs(struct MHD_Connection* connection, const std::string& uu
 				encoding.erase(encoding.find_last_not_of(" \r\n") + 1);
 				subs_encoding = encoding;
 			}
+			syslog(LOG_DEBUG, "Reading subtitles from %s (%s)", subs.c_str(), subs_encoding.c_str());
 		}
-		syslog(LOG_DEBUG, "Reading subtitles from %s (%s)", subs.c_str(), subs_encoding.c_str());
 	}
 	if (!subs_encoding.empty()) {
 		cbuf.push_back("-sub_charenc"); cbuf.push_back(subs_encoding.c_str());
