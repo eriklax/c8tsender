@@ -329,9 +329,8 @@ void ChromeCast::_read()
 				{
 					std::string uuid = m_uuid;
 					Json::Value& status = response["status"][0u];
-					m_subtitles = false;
-					if (status.isMember("activeTrackIds") && status["activeTrackIds"].isValidIndex(0u))
-						m_subtitles = true;
+					if (status.isMember("activeTrackIds"))
+						m_subtitles = status["activeTrackIds"].isValidIndex(0u);
 					m_player_state = status["playerState"].asString();
 					if (status["playerState"] == "IDLE")
 						m_uuid = "";
