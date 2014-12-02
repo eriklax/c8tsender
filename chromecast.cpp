@@ -407,7 +407,7 @@ bool ChromeCast::load(const std::string& url, const std::string& title, const st
 	msg["media"]["tracks"][0]["subtype"] = "SUBTITLES";
 	msg["media"]["tracks"][0]["trackId"] = 1;
 	msg["media"]["tracks"][0]["trackContentId"] = "trk0002";
-	msg["media"]["tracks"][0]["trackContentId"] = std::string(url).replace(25, 6, "subs");
+	msg["media"]["tracks"][0]["trackContentId"] = std::string(url).replace(std::string(url).find("stream/"), 6, "subs");
 	msg["media"]["tracks"][0]["trackContentType"] = "text/vtt";
 	/*
 	msg["activeTrackIds"] = Json::arrayValue;
