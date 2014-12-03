@@ -408,6 +408,10 @@ bool ChromeCast::load(const std::string& url, const std::string& title, const st
 	msg["media"]["tracks"][0]["trackContentId"] = "trk0002";
 	msg["media"]["tracks"][0]["trackContentId"] = std::string(url).replace(std::string(url).find("stream/"), 6, "subs");
 	msg["media"]["tracks"][0]["trackContentType"] = "text/vtt";
+	msg["media"]["textTrackStyle"]["backgroundColor"] = "#00000000";
+	msg["media"]["textTrackStyle"]["edgeType"] = "OUTLINE";
+	msg["media"]["textTrackStyle"]["edgeColor"] = "#000000FF";
+	msg["media"]["textTrackStyle"]["fontScale"] = 1.1;
 	if (m_subtitles) {
 		msg["activeTrackIds"] = Json::arrayValue;
 		msg["activeTrackIds"][0] = 1;
