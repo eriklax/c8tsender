@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 
 	std::string ip;
 	unsigned short port = 8080;
-	bool subtitles = false;
+	bool subtitles = false, play = false;
 	Playlist playlist;
 
 	static struct option longopts[] = {
@@ -34,6 +34,7 @@ int main(int argc, char* argv[])
 		{ "chromecast", required_argument, NULL, 'c' },
 		{ "port", required_argument, NULL, 'p' },
 		{ "playlist", required_argument, NULL, 'P' },
+		{ "play", no_argument, NULL, 'y' },
 		{ "subtitles", no_argument, NULL, 'S' },
 		{ "shuffle", no_argument, NULL, 's' },
 		{ "repeat", no_argument, NULL, 'r' },
@@ -42,7 +43,7 @@ int main(int argc, char* argv[])
 	};
 
 	int ch;
-	while ((ch = getopt_long(argc, argv, "hc:p:P:sSrR", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hc:p:P:sSrRy", longopts, NULL)) != -1) {
 		switch (ch) {
 			case 'c':
 				ip = optarg;
@@ -68,6 +69,9 @@ int main(int argc, char* argv[])
 				break;
 			case 'R':
 				playlist.setRepeatAll(true);
+				break;
+			case 'y':
+				play = true;
 				break;
 			default:
 			case 'h':
@@ -101,6 +105,16 @@ int main(int argc, char* argv[])
 		}
 	});
 	Webserver http(port, chromecast, playlist);
+	if (play) {
+		try {
+			const PlaylistItem& track = playlist.getNextTrack("");
+			chromecast.load(
+				"http://" + chromecast.getSocketName() + ":" + std::to_string(port) + "/stream/" + track.getUUID(),
+				track.getName(), track.getUUID());
+		} catch (const std::runtime_error& e) {
+			syslog(LOG_DEBUG, "--play failed: %s", e.what());
+		}
+	}
 	while (1) sleep(3600);
 	return 0;
 }
@@ -109,6 +123,6 @@ void usage()
 {
 	printf("%s --chromecast <ip> [ --port <number> ] [ --playlist <path> ]\n"
 			"\t[ --shuffle ] [ --repeat ] [ --repeat-all ]\n"
-			"\t[ --subtitles ]\n", __progname);
+			"\t[ --subtitles ] [ --play ]\n", __progname);
 	exit(1);
 }
