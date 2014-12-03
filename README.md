@@ -33,7 +33,7 @@ In `Finder` a new context menu option is available, select a file or folder and 
 Running
 -------
 
-1. Run the CastAway server.
+1. Run the c8tsender server.
    
    `./c8tsender --chromecast 192.168.1.78` # or whatever IP your Chromecast has
 
