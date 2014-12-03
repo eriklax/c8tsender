@@ -401,6 +401,10 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 	cbuf.push_back("-");
 	cbuf.push_back(0);
 
+	std::string cmd;
+	for (auto i: cbuf) { if (i != cbuf[0]) cmd += " "; if (i) cmd += i; }
+	syslog(LOG_DEBUG, "Command: %s", cmd.c_str());
+
 	int mypipe[2];
 	pipe(mypipe);
 	pid_t pid = fork();
@@ -472,6 +476,10 @@ int Webserver::GET_subs(struct MHD_Connection* connection, const std::string& uu
 	cbuf.push_back("-f"); cbuf.push_back("webvtt");
 	cbuf.push_back("-");
 	cbuf.push_back(0);
+
+	std::string cmd;
+	for (auto i: cbuf) { if (i != cbuf[0]) cmd += " "; if (i) cmd += i; }
+	syslog(LOG_DEBUG, "Command: %s", cmd.c_str());
 
 	int mypipe[2];
 	pipe(mypipe);
