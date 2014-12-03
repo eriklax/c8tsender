@@ -8,7 +8,7 @@
 #include <streambuf>
 #include <syslog.h>
 
-std::string execvp(const std::vector<std::string>& args);
+std::string execvp(const std::vector<std::string>& args, bool _stdout = true);
 extern const char* ffmpegpath();
 
 Webserver::Webserver(unsigned short port, ChromeCast& sender, Playlist& playlist)
@@ -518,7 +518,7 @@ int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 
-std::string execvp(const std::vector<std::string>& args)
+std::string execvp(const std::vector<std::string>& args, bool _stdin)
 {
 	std::vector<const char*> cbuf;
 	for (std::vector<std::string>::const_iterator i = args.begin(); i != args.end(); ++i)
@@ -530,14 +530,14 @@ std::string execvp(const std::vector<std::string>& args)
 	pid_t pid = fork();
 	if (pid == (pid_t)0)
 	{
-		// Include current PWD
-		char* env;
-		asprintf(&env, ".:%s", getenv("PATH"));
-		setenv("PATH", env, 1);
-
 		close(mypipe[0]);
-		close(fileno(stderr));
-		dup2(mypipe[1], fileno(stdout));
+		if (_stdin) {
+			close(fileno(stderr));
+			dup2(mypipe[1], fileno(stdout));
+		} else {
+			close(fileno(stdout));
+			dup2(mypipe[1], fileno(stderr));
+		}
 		execvp(cbuf[0], (char* const*)&cbuf[0]);
 		_exit(1);
 	}
