@@ -385,6 +385,11 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 		return mhd_queue_json(connection, 500, json);
 	}
 
+	std::string info = execvp({ffmpegpath(), "-i", path}, false);
+	std::string vcodec = "h264";
+	if (info.find("Video: h264") != std::string::npos)
+		vcodec = "copy";
+
 	std::string time = std::to_string(startTime);
 	std::vector<const char*> cbuf;
 	cbuf.push_back(ffmpegpath());
@@ -393,9 +398,9 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 		cbuf.push_back("-ss"); cbuf.push_back(time.c_str());
 	}
 	cbuf.push_back("-i"); cbuf.push_back(path.c_str());
-	cbuf.push_back("-vcodec"); cbuf.push_back("copy");
+	cbuf.push_back("-vcodec"); cbuf.push_back(vcodec.c_str());
 	cbuf.push_back("-acodec"); cbuf.push_back("aac");
-	cbuf.push_back("-scodec"); cbuf.push_back("webvtt");
+//	cbuf.push_back("-scodec"); cbuf.push_back("webvtt");
 	cbuf.push_back("-strict"); cbuf.push_back("-2");
 	cbuf.push_back("-f"); cbuf.push_back("matroska");
 	cbuf.push_back("-");
