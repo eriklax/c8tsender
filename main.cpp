@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
 
 	std::string ip;
 	unsigned short port = 8080;
+	bool subtitles = false;
 	Playlist playlist;
 
 	static struct option longopts[] = {
@@ -33,6 +34,7 @@ int main(int argc, char* argv[])
 		{ "chromecast", required_argument, NULL, 'c' },
 		{ "port", required_argument, NULL, 'p' },
 		{ "playlist", required_argument, NULL, 'P' },
+		{ "subtitles", no_argument, NULL, 'S' },
 		{ "shuffle", no_argument, NULL, 's' },
 		{ "repeat", no_argument, NULL, 'r' },
 		{ "repeat-all", no_argument, NULL, 'R' },
@@ -40,7 +42,7 @@ int main(int argc, char* argv[])
 	};
 
 	int ch;
-	while ((ch = getopt_long(argc, argv, "hc:p:P:srR", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hc:p:P:sSrR", longopts, NULL)) != -1) {
 		switch (ch) {
 			case 'c':
 				ip = optarg;
@@ -57,6 +59,9 @@ int main(int argc, char* argv[])
 				break;
 			case 's':
 				playlist.setShuffle(true);
+				break;
+			case 'S':
+				subtitles = true;
 				break;
 			case 'r':
 				playlist.setRepeat(true);
@@ -75,6 +80,7 @@ int main(int argc, char* argv[])
 
 	ChromeCast chromecast(ip);
 	chromecast.init();
+	chromecast.setSubtitleSettings(subtitles);
 	chromecast.setMediaStatusCallback([&chromecast, &playlist, port](const std::string& playerState,
 			const std::string& idleReason, const std::string& uuid) -> void {
 		syslog(LOG_DEBUG, "mediastatus: %s %s %s", playerState.c_str(), idleReason.c_str(), uuid.c_str());
@@ -102,6 +108,7 @@ int main(int argc, char* argv[])
 void usage()
 {
 	printf("%s --chromecast <ip> [ --port <number> ] [ --playlist <path> ]\n"
-			"\t[ --shuffle ] [ --repeat ] [ --repeat-all ]\n", __progname);
+			"\t[ --shuffle ] [ --repeat ] [ --repeat-all ]\n"
+			"\t[ --subtitles ]\n", __progname);
 	exit(1);
 }

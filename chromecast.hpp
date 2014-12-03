@@ -20,6 +20,7 @@ class ChromeCast {
 		bool pause();
 		bool stop();
 		bool setSubtitles(bool status);
+		void setSubtitleSettings(bool status);
 
 		const std::string& getUUID() const;
 		const std::string& getPlayerState() const;

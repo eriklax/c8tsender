@@ -408,10 +408,10 @@ bool ChromeCast::load(const std::string& url, const std::string& title, const st
 	msg["media"]["tracks"][0]["trackContentId"] = "trk0002";
 	msg["media"]["tracks"][0]["trackContentId"] = std::string(url).replace(std::string(url).find("stream/"), 6, "subs");
 	msg["media"]["tracks"][0]["trackContentType"] = "text/vtt";
-	/*
-	msg["activeTrackIds"] = Json::arrayValue;
-	msg["activeTrackIds"][0] = 1;
-	*/
+	if (m_subtitles) {
+		msg["activeTrackIds"] = Json::arrayValue;
+		msg["activeTrackIds"][0] = 1;
+	}
 	msg["autoplay"] = true;
 	msg["currentTime"] = 0;
 	response = send("urn:x-cast:com.google.cast.media", msg);
@@ -467,6 +467,11 @@ bool ChromeCast::setSubtitles(bool status)
 		msg["activeTrackIds"][0] = 1;
 	response = send("urn:x-cast:com.google.cast.media", msg);
 	return true;
+}
+
+void ChromeCast::setSubtitleSettings(bool status)
+{
+	m_subtitles = status;
 }
 
 void ChromeCast::setMediaStatusCallback(std::function<void(const std::string&,
