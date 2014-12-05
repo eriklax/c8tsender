@@ -39,11 +39,12 @@ int main(int argc, char* argv[])
 		{ "shuffle", no_argument, NULL, 's' },
 		{ "repeat", no_argument, NULL, 'r' },
 		{ "repeat-all", no_argument, NULL, 'R' },
+		{ "track", required_argument, NULL, 't' },
 		{ NULL, 0, NULL, 0 }
 	};
 
 	int ch;
-	while ((ch = getopt_long(argc, argv, "hc:p:P:sSrRy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hc:p:P:sSrRyt:", longopts, NULL)) != -1) {
 		switch (ch) {
 			case 'c':
 				ip = optarg;
@@ -72,6 +73,9 @@ int main(int argc, char* argv[])
 				break;
 			case 'y':
 				play = true;
+				break;
+			case 't':
+				playlist.insert(std::string(optarg));
 				break;
 			default:
 			case 'h':
