@@ -85,7 +85,14 @@ const PlaylistItem& Playlist::getNextTrack(const std::string& uuid) const
 		std::random_device rd;
 		std::default_random_engine e1(rd());
 		std::uniform_int_distribution<size_t> uniform_dist(0, m_items.size() - 1);
-		return m_items[uniform_dist(e1)];
+		size_t choosen = uniform_dist(e1);
+
+		// Improve the shuffle experience for users who does not appreciate true randomness
+		if (m_items.size() > 1)
+			while (m_items[choosen].getUUID() == uuid)
+				choosen = uniform_dist(e1);
+
+		return m_items[choosen];
 	}
 
 	auto ptr = std::find_if(m_items.begin(), m_items.end(),
