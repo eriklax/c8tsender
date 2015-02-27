@@ -127,6 +127,6 @@ void usage()
 {
 	printf("%s --chromecast <ip> [ --port <number> ] [ --playlist <path> ]\n"
 			"\t[ --shuffle ] [ --repeat ] [ --repeat-all ]\n"
-			"\t[ --subtitles ] [ --play ]\n", __progname);
+			"\t[ --subtitles ] [ --play ] [ --track <file> ]\n", __progname);
 	exit(1);
 }
