@@ -90,13 +90,14 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 
 	syslog(LOG_DEBUG, "%s %s", method, url);
 
-	if (strcmp(method, "POST") == 0)
+	if (strcmp(method, MHD_HTTP_METHOD_POST) == 0)
 	{
 		if (strcmp(url, "/playlist") == 0)
 			return POST_playlist(connection, postdata);
 		return MHD_NO;
 	}
-	if (strcmp(method, "GET") == 0)
+
+	if (strcmp(method, MHD_HTTP_METHOD_GET) == 0)
 	{
 		if (strcmp(url, "/") == 0)
 			return GET_file(connection, "htdocs/index.html", "text/html");
