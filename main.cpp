@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 	Webserver http(port, chromecast, playlist);
 	if (play) {
 		try {
-			const PlaylistItem& track = playlist.getNextTrack("");
+			const PlaylistItem& track = playlist.getNextTrack();
 			chromecast.load(
 				"http://" + chromecast.getSocketName() + ":" + std::to_string(port) + "/stream/" + track.getUUID(),
 				track.getName(), track.getUUID());

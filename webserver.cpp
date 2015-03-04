@@ -527,8 +527,8 @@ int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 std::string execvp(const std::vector<std::string>& args, bool _stdin)
 {
 	std::vector<const char*> cbuf;
-	for (std::vector<std::string>::const_iterator i = args.begin(); i != args.end(); ++i)
-		cbuf.push_back(i->c_str());
+	for (auto& a : args)
+		cbuf.push_back(a.c_str());
 	cbuf.push_back(0);
 
 	int mypipe[2];
