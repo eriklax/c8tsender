@@ -5,6 +5,7 @@
 #include <syslog.h>
 #include <getopt.h>
 #include <fstream>
+#include <atomic>
 
 void usage();
 extern char* __progname;
@@ -26,7 +27,8 @@ int main(int argc, char* argv[])
 
 	std::string ip;
 	unsigned short port = 8080;
-	bool subtitles = false, play = false;
+	bool subtitles = false, play = false, exitOnFinish = false;
+	std::atomic<bool> done(false);
 	Playlist playlist;
 
 	static struct option longopts[] = {
@@ -40,11 +42,12 @@ int main(int argc, char* argv[])
 		{ "repeat", no_argument, NULL, 'r' },
 		{ "repeat-all", no_argument, NULL, 'R' },
 		{ "track", required_argument, NULL, 't' },
+		{ "exit-on-finish", no_argument, NULL, 'x' },
 		{ NULL, 0, NULL, 0 }
 	};
 
 	int ch;
-	while ((ch = getopt_long(argc, argv, "hc:p:P:sSrRyt:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hc:p:P:sSrRyt:x", longopts, NULL)) != -1) {
 		switch (ch) {
 			case 'c':
 				ip = optarg;
@@ -77,6 +80,9 @@ int main(int argc, char* argv[])
 			case 't':
 				playlist.insert(std::string(optarg));
 				break;
+			case 'x':
+				exitOnFinish = true;
+				break;
 			default:
 			case 'h':
 				usage();
@@ -89,13 +95,18 @@ int main(int argc, char* argv[])
 	ChromeCast chromecast(ip);
 	chromecast.init();
 	chromecast.setSubtitleSettings(subtitles);
-	chromecast.setMediaStatusCallback([&chromecast, &playlist, port](const std::string& playerState,
+	chromecast.setMediaStatusCallback([&chromecast, &playlist, port, exitOnFinish, &done](const std::string& playerState,
 			const std::string& idleReason, const std::string& uuid) -> void {
 		syslog(LOG_DEBUG, "mediastatus: %s %s %s", playerState.c_str(), idleReason.c_str(), uuid.c_str());
 		if (playerState == "IDLE") {
 			if (idleReason == "FINISHED") {
 				try {
 					std::lock_guard<std::mutex> lock(playlist.getMutex());
+					if (exitOnFinish && (playlist.getTracks().rbegin())->getUUID() == uuid) {
+						syslog(LOG_DEBUG, "playlist done");
+						done = true;
+						return;
+					}
 					PlaylistItem track = playlist.getNextTrack(uuid);
 					std::thread foo([&chromecast, port, track]() {
 						chromecast.load("http://" + chromecast.getSocketName() + ":" + std::to_string(port) + "/stream/" + track.getUUID(),
@@ -119,7 +130,7 @@ int main(int argc, char* argv[])
 			syslog(LOG_DEBUG, "--play failed: %s", e.what());
 		}
 	}
-	while (1) sleep(3600);
+	while (!done) sleep(1);
 	return 0;
 }
 

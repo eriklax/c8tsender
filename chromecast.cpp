@@ -21,6 +21,8 @@ ChromeCast::ChromeCast(const std::string& ip)
 
 ChromeCast::~ChromeCast()
 {
+	if (m_ssl)
+		SSL_shutdown(m_ssl);
 	disconnect();
 	SSL_CTX_free(m_ssl_ctx);
 }
