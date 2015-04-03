@@ -24,6 +24,7 @@ class ChromeCast {
 
 		const std::string& getUUID() const;
 		const std::string& getPlayerState() const;
+		double getPlayerCurrentTime() const;
 		bool hasSubtitles() const;
 		std::string getSocketName() const;
 	private:
@@ -45,6 +46,8 @@ class ChromeCast {
 
 		std::string m_uuid;
 		std::string m_player_state;
+		double m_player_current_time;
+		time_t m_player_current_time_update;
 		bool m_subtitles = false;
 		std::string m_session_id;
 		unsigned int m_media_session_id;

@@ -36,6 +36,7 @@
 		</style>
 		<script type="text/javascript">
 			var streamInfoTimer = null;
+			var currentTimeTimer = null;
 			var playlistUUID = null;
 			function timetoseconds(timestr) {
 				return parseInt(timestr.split(':').reverse().reduce(function (p, c, i, arr) {
@@ -47,6 +48,19 @@
 						if (i >= 4) c = 0;
 						return p + c;
 				}));
+			}
+			function updateCurrentTime() {
+				var t = $("#currenttime").data("time");
+				t += 1;
+				var min = 0;
+				while (t >= 60)
+				{
+					t -= 60;
+					min += 1;
+				}
+				$("#currenttime").text(min + ":" + ("0" + parseInt(t)).slice(-2));
+				$("#currenttime").data("time", t);
+				currentTimeTimer = setTimeout(updateCurrentTime, 1000);
 			}
 			function reloadPlaylist() {
 				$.ajax({
@@ -99,11 +113,18 @@
 						$("#pause").addClass('btn-primary');
 						$("#seek").addClass('btn-primary');
 						$("#stop").addClass('btn-primary');
+						$("#currenttime").data("time", obj.currenttime);
+						clearTimeout(currentTimeTimer);
+						updateCurrentTime();
+						$("#currenttime").show();
 					} else if (obj.playerstate == 'PAUSED') {
+						clearTimeout(currentTimeTimer);
 						$("#resume").addClass('btn-primary');
 						$("#pause").removeClass('btn-primary');
 						$("#stop").addClass('btn-primary');
 					} else {
+						$("#currenttime").hide();
+						clearTimeout(currentTimeTimer);
 						if (obj.uuid != '') {
 							$("#resume").addClass('btn-primary');
 							$("#seek").addClass('btn-primary');
@@ -179,6 +200,9 @@
 				</div>
 				<div class="btn-group">
 					<button type="button" class="glyphicon glyphicon-step-forward btn btn-sm" id="next" title="Next"></button>
+				</div>
+				<div class="btn-group hidden-xs">
+					<span id="currenttime"></span>
 				</div>
 				<div class="btn-group pull-right">
 					<button type="button" class="glyphicon glyphicon-subtitles btn btn-xs" id="cc" title="Subtitles"></button>

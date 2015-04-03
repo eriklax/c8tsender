@@ -12,6 +12,8 @@ ChromeCast::ChromeCast(const std::string& ip)
 , m_s(-1)
 , m_ssl(NULL)
 , m_ssl_ctx(NULL)
+, m_player_current_time(0.0)
+, m_player_current_time_update(0)
 {
 	m_ssl_ctx = SSL_CTX_new(TLSv1_client_method());
 
@@ -334,6 +336,8 @@ void ChromeCast::_read()
 					if (status.isMember("activeTrackIds"))
 						m_subtitles = status["activeTrackIds"].isValidIndex(0u);
 					m_player_state = status["playerState"].asString();
+					m_player_current_time = status["currentTime"].asDouble();
+					m_player_current_time_update = time(NULL);
 					if (status["playerState"] == "IDLE")
 						m_uuid = "";
 					if (status["playerState"] != "IDLE" &&
@@ -357,6 +361,13 @@ const std::string& ChromeCast::getUUID() const
 const std::string& ChromeCast::getPlayerState() const
 {
 	return m_player_state;
+}
+
+double ChromeCast::getPlayerCurrentTime() const
+{
+	if (m_player_current_time == 0)
+		return 0;
+	return m_player_current_time + (time(NULL) - m_player_current_time_update);
 }
 
 bool ChromeCast::hasSubtitles() const
