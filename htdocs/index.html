@@ -131,6 +131,7 @@
 						deletebutton.attr('id', track.uuid);
 						deletebutton.on('click', function() {
 							var uuid = $(this).attr('id');
+							$(this).closest('.playlistitem').hide();
 							$.ajax({
 								dataType: 'json',
 								type: 'DELETE',
