@@ -97,6 +97,14 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 		return MHD_NO;
 	}
 
+	if (strcmp(method, MHD_HTTP_METHOD_DELETE) == 0)
+	{
+		if (strncmp(url, "/playlist/", 10) == 0) {
+			std::string uuid = url + 10;
+			return DELETE_playlist(connection, uuid);
+		}
+	}
+
 	if (strcmp(method, MHD_HTTP_METHOD_GET) == 0)
 	{
 		if (strcmp(url, "/") == 0)
@@ -219,6 +227,17 @@ int Webserver::POST_playlist(struct MHD_Connection* connection, const std::strin
 		json["uuid"] = track.getUUID();
 	}
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
+}
+
+int Webserver::DELETE_playlist(struct MHD_Connection* connection, const std::string& uuid)
+{
+	if (!isPrivileged(connection))
+		return mhd_queue_json(connection, 403, Json::Value());
+
+	std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+	m_playlist.remove(uuid);
+
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
 int Webserver::GET_playlist(struct MHD_Connection* connection)

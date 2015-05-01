@@ -13,6 +13,7 @@ class Webserver {
 	private:
 		int GET_file(struct MHD_Connection* connection, const std::string& file, const std::string& contentType);
 		int POST_playlist(struct MHD_Connection* connection, const std::string& data);
+		int DELETE_playlist(struct MHD_Connection* connection, const std::string& uuid);
 		int GET_playlist(struct MHD_Connection* connection);
 		int GET_playlist_repeat(struct MHD_Connection* connection, bool value);
 		int GET_playlist_repeatall(struct MHD_Connection* connection, bool value);

@@ -29,12 +29,12 @@
 				cursor: pointer;
 				white-space: nowrap;
 			}
-			.playlistitem .queuebutton {
+			.playlistitem .buttondiv {
 				float: right;
-				margin-top: -22px;
+				margin-top: -26px;
 				display: none;
 			}
-			.playlistitem:hover .queuebutton {
+			.playlistitem:hover .buttondiv {
 				display: block;
 			}
 			.playlistitem.highlight {
@@ -83,7 +83,7 @@
 						else $("#repeatall").removeClass('btn-success');
 					playlistUUID = playlist.uuid;
 					if (playlist.queue.length) {
-						$('#playlist').append($('<div />').addClass('playlistitem').text('Up next...'));
+						$('#playlist').append($('<div />').addClass('playlistitem').text('Play Queue').css('font-weight', 'bold'));
 						for (i = 0; i < playlist.queue.length; ++i)
 						{
 							var track = playlist.queue[i];
@@ -123,6 +123,22 @@
 								url: '/play/' + uuid
 							});
 						});
+						var buttondiv = $('<div />');
+						buttondiv.addClass('buttondiv');
+						var deletebutton = $('<button />');
+						deletebutton.addClass('deletebutton glyphicon glyphicon-minus btn btn-xs');
+						deletebutton.attr('title', 'Delete track from playlist');
+						deletebutton.attr('id', track.uuid);
+						deletebutton.on('click', function() {
+							var uuid = $(this).attr('id');
+							$.ajax({
+								dataType: 'json',
+								type: 'DELETE',
+								url: '/playlist/' + uuid
+							});
+							return false;
+						});
+						buttondiv.append(deletebutton);
 						var queuebutton = $('<button />');
 						queuebutton.addClass('queuebutton glyphicon glyphicon-plus btn btn-xs');
 						queuebutton.attr('title', 'Add track to queue');
@@ -135,7 +151,8 @@
 							});
 							return false;
 						});
-						div.append(queuebutton);
+						buttondiv.append(queuebutton);
+						div.append(buttondiv);
 						$('#playlist').append(div);
 					}
 					if (playlist.tracks.length) $("#next").addClass('btn-primary');
