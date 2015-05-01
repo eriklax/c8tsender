@@ -24,6 +24,7 @@ class Playlist {
 
 		void insert(const PlaylistItem& item);
 		bool remove(const std::string& uuid);
+		void queueTrack(const std::string& uuid);
 		const PlaylistItem& getTrack(const std::string& uuid) const;
 		const PlaylistItem& getNextTrack(const std::string& uuid = std::string()) const;
 
@@ -31,6 +32,7 @@ class Playlist {
 		bool getRepeatAll() const;
 		bool getShuffle() const;
 		const std::vector<PlaylistItem>& getTracks() const;
+		const std::vector<std::string>& getQueue() const;
 		const std::string& getUUID() const;
 
 		void setRepeat(bool value);
@@ -42,8 +44,9 @@ class Playlist {
 		bool m_repeat;
 		bool m_repeatall;
 		bool m_shuffle;
+		mutable std::vector<std::string> m_queue;
 		std::vector<PlaylistItem> m_items;
-		std::string m_uuid;
+		mutable std::string m_uuid;
 		std::mutex m_mutex;
 };
 

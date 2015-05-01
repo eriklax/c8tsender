@@ -59,9 +59,22 @@ bool Playlist::remove(const std::string& uuid)
 	if (ptr == m_items.end())
 		return false;
 
+	auto ptr2 = std::remove_if(m_queue.begin(), m_queue.end(),
+			[&uuid](std::string const& item) {
+				return item == uuid;
+			});
+	if (ptr2 != m_queue.end())
+		m_queue.erase(ptr2, m_queue.end());
+
 	m_items.erase(ptr, m_items.end());
 	m_uuid = uuidgen();
 	return true;
+}
+
+void Playlist::queueTrack(const std::string& uuid)
+{
+	m_queue.push_back(uuid);
+	m_uuid = uuidgen();
 }
 
 const PlaylistItem& Playlist::getTrack(const std::string& uuid) const
@@ -79,6 +92,19 @@ const PlaylistItem& Playlist::getNextTrack(const std::string& uuid) const
 {
 	if (m_items.empty())
 		throw std::runtime_error("playlist is empty");
+
+	while (!m_queue.empty())
+	{
+		std::string item = *m_queue.begin();
+		m_queue.erase(m_queue.begin());
+		try {
+			auto& track = getTrack(item);
+			m_uuid = uuidgen();
+			return track;
+		} catch (...) {
+			// next
+		}
+	}
 
 	if (m_shuffle && !m_repeat)
 	{
@@ -130,6 +156,11 @@ bool Playlist::getShuffle() const
 const std::vector<PlaylistItem>& Playlist::getTracks() const
 {
 	return m_items;
+}
+
+const std::vector<std::string>& Playlist::getQueue() const
+{
+	return m_queue;
 }
 
 const std::string& Playlist::getUUID() const

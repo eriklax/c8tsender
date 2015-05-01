@@ -126,6 +126,10 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 
 			return GET_play(connection, uuid, startTime);
 		}
+		if (strncmp(url, "/queue/", 7) == 0) {
+			std::string uuid = url + 7;
+			return GET_queue(connection, uuid);
+		}
 		if (strcmp(url, "/next") == 0)
 			return GET_next(connection);
 		if (strcmp(url, "/streaminfo") == 0)
@@ -236,6 +240,14 @@ int Webserver::GET_playlist(struct MHD_Connection* connection)
 			tracklist.append(t);
 		}
 		json["tracks"] = tracklist;
+		Json::Value queuelist(Json::arrayValue);
+		for (auto& uuid : m_playlist.getQueue())
+		{
+			Json::Value t;
+			t["uuid"] = uuid;
+			queuelist.append(t);
+		}
+		json["queue"] = queuelist;
 	}
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
@@ -322,6 +334,20 @@ int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uu
 				(startTime ? "/" + std::to_string(startTime) : ""),
 			name, uuid))
 		return mhd_queue_json(connection, 500, Json::Value());
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
+}
+
+int Webserver::GET_queue(struct MHD_Connection* connection, const std::string& uuid)
+{
+	try {
+		std::lock_guard<std::mutex> lock(m_playlist.getMutex());
+
+		m_playlist.queueTrack(uuid);
+	} catch (std::runtime_error& e) {
+		Json::Value json;
+		json["error"] = e.what();
+		return mhd_queue_json(connection, 500, json);
+	}
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 

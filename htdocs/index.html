@@ -29,6 +29,14 @@
 				cursor: pointer;
 				white-space: nowrap;
 			}
+			.playlistitem .queuebutton {
+				float: right;
+				margin-top: -20px;
+				display: none;
+			}
+			.playlistitem:hover .queuebutton {
+				display: block;
+			}
 			.playlistitem.highlight {
 				color: #d35400;
 				font-weight: bold;
@@ -68,12 +76,39 @@
 				.done(function (playlist) {
 					$('#playlist').empty();
 					if (playlist.shuffle) $("#shuffle").addClass('btn-success');
-					else $("#shuffle").removeClass('btn-success');
+						else $("#shuffle").removeClass('btn-success');
 					if (playlist.repeat) $("#repeat").addClass('btn-success');
-					else $("#repeat").removeClass('btn-success');
+						else $("#repeat").removeClass('btn-success');
 					if (playlist.repeatall) $("#repeatall").addClass('btn-success');
-					else $("#repeatall").removeClass('btn-success');
+						else $("#repeatall").removeClass('btn-success');
 					playlistUUID = playlist.uuid;
+					if (playlist.queue.length) {
+						$('#playlist').append($('<div />').addClass('playlistitem').text('Up next...'));
+						for (i = 0; i < playlist.queue.length; ++i)
+						{
+							var track = playlist.queue[i];
+							var div = $('<div />');
+							div.addClass('playlistitem');
+							var name = 'Unknown';
+							for (x = 0; x < playlist.tracks.length; ++x) {
+								if (playlist.tracks[x].uuid == track.uuid) {
+									name = playlist.tracks[x].name;
+									break;
+								}
+							}
+							div.text(name);
+							div.data('id', track.uuid);
+							div.on('click', function() {
+								var uuid = $(this).data('id');
+								$.ajax({
+									dataType: 'json',
+									url: '/play/' + uuid
+								});
+							});
+							$('#playlist').append(div);
+						}
+						$('#playlist').append($('<div />').html('&nbsp;'));
+					}
 					for (i = 0; i < playlist.tracks.length; ++i)
 					{
 						var track = playlist.tracks[i];
@@ -88,6 +123,19 @@
 								url: '/play/' + uuid
 							});
 						});
+						var queuebutton = $('<button />');
+						queuebutton.addClass('queuebutton glyphicon glyphicon-share-alt btn btn-xs');
+						queuebutton.attr('title', 'Add track to queue');
+						queuebutton.attr('id', track.uuid);
+						queuebutton.on('click', function() {
+							var uuid = $(this).attr('id');
+							$.ajax({
+								dataType: 'json',
+								url: '/queue/' + uuid
+							});
+							return false;
+						});
+						div.append(queuebutton);
 						$('#playlist').append(div);
 					}
 					if (playlist.tracks.length) $("#next").addClass('btn-primary');
