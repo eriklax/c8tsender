@@ -8,7 +8,7 @@ def addtoplaylist(file):
 	global uuid
 	# feel free to suggest more
 	movieExtensions = [
-			'.mkv', '.mp4', '.mpg', '.mpeg', '.avi'
+			'.mp3', '.mkv', '.mp4', '.mpg', '.mpeg', '.avi'
 		]
 	if not os.path.splitext(file)[1] in movieExtensions:
 		return
