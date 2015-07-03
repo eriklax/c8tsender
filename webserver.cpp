@@ -15,6 +15,7 @@ Webserver::Webserver(unsigned short port, ChromeCast& sender, Playlist& playlist
 : m_port(port)
 , m_sender(sender)
 , m_playlist(playlist)
+, m_seek(0.0)
 {
 	mp_d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION,
 			port,
@@ -431,6 +432,8 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 		return mhd_queue_json(connection, 500, json);
 	}
 
+	m_seek = startTime;
+
 	std::string info = execvp({ffmpegpath(), "-i", path}, false);
 	std::string vcodec = "h264";
 	if (info.find("Video: h264") != std::string::npos)
@@ -564,7 +567,7 @@ int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 	Json::Value json;
 	json["uuid"] = m_sender.getUUID();
 	json["playerstate"] = m_sender.getPlayerState();
-	json["currenttime"] = m_sender.getPlayerCurrentTime();
+	json["currenttime"] = m_seek + m_sender.getPlayerCurrentTime();
 	json["subtitles"] = m_sender.hasSubtitles();
 	json["playlist"] = m_playlist.getUUID();
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);

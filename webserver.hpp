@@ -52,6 +52,7 @@ class Webserver {
 
 		ChromeCast& m_sender;
 		Playlist& m_playlist;
+		double m_seek;
 
 		short int m_port;
 		struct MHD_Daemon* mp_d;
