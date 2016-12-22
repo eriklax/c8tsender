@@ -27,28 +27,28 @@ ChromeCast::~ChromeCast()
 
 static OSStatus CDSAWriteFunc(SSLConnectionRef connection, const void* data, size_t* dataLength)
 {
-  ssize_t bytes;
-  bytes = write((intptr_t)connection, data, *dataLength);
-  if (bytes >= 0)
-  {
-    *dataLength = bytes;
-    return (0);
-  }
-  else
-    return (-1);
+	ssize_t bytes;
+	bytes = write((intptr_t)connection, data, *dataLength);
+	if (bytes >= 0)
+	{
+		*dataLength = bytes;
+		return (0);
+	}
+	else
+		return (-1);
 }
 
 static OSStatus CDSAReadFunc(SSLConnectionRef connection, void* data, size_t* dataLength)
 {
-  ssize_t bytes;
-  bytes = recv((intptr_t)connection, data, *dataLength, 0);
-  if (bytes >= 0)
-  {
-    *dataLength = bytes;
-    return (0);
-  }
-  else
-    return (-1);
+	ssize_t bytes;
+	bytes = recv((intptr_t)connection, data, *dataLength, 0);
+	if (bytes >= 0)
+	{
+		*dataLength = bytes;
+		return (0);
+	}
+	else
+		return (-1);
 }
 
 // establish connection to the ChromeCast device, m_init is set to indicate that
@@ -256,7 +256,7 @@ void ChromeCast::_read()
 	while (true)
 	{
 		char pktlen[4];
-			size_t r;
+		size_t r;
 		for (r = 0; r < sizeof pktlen; ++r)
 		{
 			size_t buf;
@@ -410,7 +410,7 @@ bool ChromeCast::hasSubtitles() const
 std::string ChromeCast::getSocketName() const
 {
 	struct sockaddr_in addr;
-    socklen_t len = sizeof(struct sockaddr);
+	socklen_t len = sizeof(struct sockaddr);
 	getsockname(m_s, (struct sockaddr*)&addr, &len);
 	return inet_ntoa(addr.sin_addr);
 }
