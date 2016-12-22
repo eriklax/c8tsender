@@ -1,7 +1,7 @@
 #ifndef _CHROMECAST_HPP_
 #define _CHROMECAST_HPP_
 
-#include <openssl/ssl.h>
+#include <Security/SecureTransport.h>
 #include <json/json.h>
 #include <thread>
 #include <string>
@@ -37,8 +37,7 @@ class ChromeCast {
 
 		std::string m_ip;
 		int m_s;
-		SSL* m_ssl;
-		SSL_CTX* m_ssl_ctx;
+		SSLContextRef m_ssl;
 		std::mutex m_mutex;
 		std::mutex m_ssl_mutex;
 		std::thread m_tread;

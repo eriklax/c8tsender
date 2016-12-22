@@ -20,8 +20,6 @@ const char* ffmpegpath()
 int main(int argc, char* argv[])
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
-	OpenSSL_add_ssl_algorithms();
- 	SSL_load_error_strings();
 	signal(SIGPIPE, SIG_IGN);
 	openlog(NULL, LOG_PID | LOG_PERROR, LOG_DAEMON);
 

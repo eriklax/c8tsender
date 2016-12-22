@@ -11,12 +11,9 @@ ChromeCast::ChromeCast(const std::string& ip)
 : m_ip(ip)
 , m_s(-1)
 , m_ssl(NULL)
-, m_ssl_ctx(NULL)
 , m_player_current_time(0.0)
 , m_player_current_time_update(0)
 {
-	m_ssl_ctx = SSL_CTX_new(TLSv1_client_method());
-
 	if (!connect())
 		throw std::runtime_error("Could not connect");
 }
@@ -24,9 +21,34 @@ ChromeCast::ChromeCast(const std::string& ip)
 ChromeCast::~ChromeCast()
 {
 	if (m_ssl)
-		SSL_shutdown(m_ssl);
+		SSLClose(m_ssl);
 	disconnect();
-	SSL_CTX_free(m_ssl_ctx);
+}
+
+static OSStatus CDSAWriteFunc(SSLConnectionRef connection, const void* data, size_t* dataLength)
+{
+  ssize_t bytes;
+  bytes = write((intptr_t)connection, data, *dataLength);
+  if (bytes >= 0)
+  {
+    *dataLength = bytes;
+    return (0);
+  }
+  else
+    return (-1);
+}
+
+static OSStatus CDSAReadFunc(SSLConnectionRef connection, void* data, size_t* dataLength)
+{
+  ssize_t bytes;
+  bytes = recv((intptr_t)connection, data, *dataLength, 0);
+  if (bytes >= 0)
+  {
+    *dataLength = bytes;
+    return (0);
+  }
+  else
+    return (-1);
 }
 
 // establish connection to the ChromeCast device, m_init is set to indicate that
@@ -51,13 +73,16 @@ bool ChromeCast::connect()
 		return false;
 	}
 
-	m_ssl = SSL_new(m_ssl_ctx);
-	SSL_set_fd(m_ssl, m_s);
-	SSL_set_mode(m_ssl, SSL_get_mode(m_ssl) | SSL_MODE_AUTO_RETRY);
-	SSL_set_connect_state(m_ssl);
-	if (SSL_connect(m_ssl) != 1) {
+	OSStatus s;
+
+	s = SSLNewContext(false, &m_ssl);
+	s = SSLSetProtocolVersionEnabled(m_ssl, kTLSProtocol1, true);
+	s = SSLSetConnection(m_ssl, (SSLConnectionRef)(intptr_t)m_s);
+	s = SSLSetIOFuncs(m_ssl, CDSAReadFunc, CDSAWriteFunc);
+	s = SSLHandshake(m_ssl);
+	if (!s) {
 		syslog(LOG_CRIT, "SSL_connect() failed");
-		SSL_free(m_ssl);
+		SSLDisposeContext(m_ssl);
 		m_ssl = NULL;
 		close(m_s);
 		m_s = -1;
@@ -148,7 +173,7 @@ void ChromeCast::disconnect()
 	if (m_s != -1)
 		close(m_s);
 	m_s = -1;
-	SSL_free(m_ssl);
+	SSLDisposeContext(m_ssl);
 	m_ssl = NULL;
 	m_init = false;
 }
@@ -193,13 +218,14 @@ Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& p
 			msg.payload_utf8().c_str()
 		  );
 
-	int w;
+	size_t w;
 	m_ssl_mutex.lock();
 	if (m_ssl) {
-		w = SSL_write(m_ssl, foo.c_str(), foo.size());
-		if (w == -1) {
+		OSStatus s = SSLWrite(m_ssl, foo.c_str(), foo.size(), &w);
+		if (!s) {
 			syslog(LOG_DEBUG, "SSL_write error");
 			disconnect();
+			w = -1;
 		}
 	} else
 		w = -1;
@@ -230,10 +256,14 @@ void ChromeCast::_read()
 	while (true)
 	{
 		char pktlen[4];
-		int r;
+			size_t r;
 		for (r = 0; r < sizeof pktlen; ++r)
-			if (SSL_read(m_ssl, pktlen + r, 1) < 1)
+		{
+			size_t buf;
+			SSLRead(m_ssl, pktlen + r, 1, &buf);
+			if (buf < 1)
 				break;
+		}
 		if (r != sizeof pktlen) {
 			syslog(LOG_ERR, "SSL_read error");
 			_release_waiters();
@@ -247,7 +277,8 @@ void ChromeCast::_read()
 		std::string buf;
 		while (buf.size() < len) {
 			char b[2048];
-			int r = SSL_read(m_ssl, b, sizeof b);
+			size_t r;
+			SSLRead(m_ssl, b, sizeof b, &r);
 			if (r < 1)
 				break;
 			buf.append(b, r);
@@ -285,8 +316,9 @@ void ChromeCast::_read()
 			std::string data;
 			reply.SerializeToString(&data);
 			unsigned int len = htonl(data.size());
-			SSL_write(m_ssl, &len, sizeof len);
-			SSL_write(m_ssl, data.c_str(), data.size());
+			size_t r;
+			SSLWrite(m_ssl, &len, sizeof len, &r);
+			SSLWrite(m_ssl, data.c_str(), data.size(), &r);
 			continue;
 		}
 
