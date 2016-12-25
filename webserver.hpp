@@ -22,6 +22,7 @@ class Webserver {
 		int GET_resume(struct MHD_Connection* connection);
 		int GET_stop(struct MHD_Connection* connection);
 		int GET_subtitles(struct MHD_Connection* connection, bool value);
+		int GET_volume(struct MHD_Connection* connection, size_t volume);
 		int GET_play(struct MHD_Connection* connection, const std::string& uuid, time_t startTime = 0);
 		int GET_queue(struct MHD_Connection* connection, const std::string& uuid);
 		int GET_next(struct MHD_Connection* connection);

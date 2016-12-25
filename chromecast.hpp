@@ -20,6 +20,8 @@ class ChromeCast {
 		bool pause();
 		bool stop();
 		bool setSubtitles(bool status);
+		bool setVolume(double level, bool muted = false);
+		double getVolume() const;
 		void setSubtitleSettings(bool status);
 
 		const std::string& getUUID() const;
@@ -48,6 +50,8 @@ class ChromeCast {
 		double m_player_current_time;
 		time_t m_player_current_time_update;
 		bool m_subtitles = false;
+		double m_volume;
+		bool m_muted;
 		std::string m_session_id;
 		unsigned int m_media_session_id;
 		unsigned int _request_id();

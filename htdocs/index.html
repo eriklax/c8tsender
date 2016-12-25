@@ -168,6 +168,7 @@
 					url: '/streaminfo'
 				})
 				.done(function (obj) {
+					$("#volume").val(obj.volume);
 					if (obj.subtitles)
 						$("#cc").addClass('btn-success');
 					else
@@ -249,6 +250,9 @@
 						url: '/play/' + uuid + '/' + timetoseconds(seek) 
 					});
 				});
+				$("#volume").on('change', function() {
+					$.ajax({ dataType: 'json', url: '/volume/' + $(this).val() });
+				});
 			});
 		</script>
 	</head>
@@ -265,6 +269,7 @@
 				<div class="btn-group">
 					<button type="button" class="glyphicon glyphicon-step-forward btn btn-sm" id="next" title="Next"></button>
 				</div>
+				<input type="text" id="volume">
 				<div class="btn-group hidden-xs" style="padding-left: 10px;">
 					<span id="currenttime"></span>
 				</div>

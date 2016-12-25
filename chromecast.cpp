@@ -13,6 +13,8 @@ ChromeCast::ChromeCast(const std::string& ip)
 , m_ssl(NULL)
 , m_player_current_time(0.0)
 , m_player_current_time_update(0)
+, m_volume(0.0)
+, m_muted(false)
 {
 	if (!connect())
 		throw std::runtime_error("Could not connect");
@@ -28,7 +30,7 @@ ChromeCast::~ChromeCast()
 static OSStatus CDSAWriteFunc(SSLConnectionRef connection, const void* data, size_t* dataLength)
 {
 	ssize_t bytes;
-	bytes = write((intptr_t)connection, data, *dataLength);
+	bytes = send((intptr_t)connection, data, *dataLength, 0);
 	if (bytes >= 0)
 	{
 		*dataLength = bytes;
@@ -76,11 +78,12 @@ bool ChromeCast::connect()
 	OSStatus s;
 
 	s = SSLNewContext(false, &m_ssl);
-	s = SSLSetProtocolVersionEnabled(m_ssl, kTLSProtocol1, true);
-	s = SSLSetConnection(m_ssl, (SSLConnectionRef)(intptr_t)m_s);
+	s = SSLSetSessionOption(m_ssl, kSSLSessionOptionBreakOnServerAuth, true);
 	s = SSLSetIOFuncs(m_ssl, CDSAReadFunc, CDSAWriteFunc);
+	s = SSLSetConnection(m_ssl, (SSLConnectionRef)(intptr_t)m_s);
 	s = SSLHandshake(m_ssl);
-	if (!s) {
+	s = SSLHandshake(m_ssl);
+	if (s) {
 		syslog(LOG_CRIT, "SSL_connect() failed");
 		SSLDisposeContext(m_ssl);
 		m_ssl = NULL;
@@ -222,7 +225,7 @@ Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& p
 	m_ssl_mutex.lock();
 	if (m_ssl) {
 		OSStatus s = SSLWrite(m_ssl, foo.c_str(), foo.size(), &w);
-		if (!s) {
+		if (s) {
 			syslog(LOG_DEBUG, "SSL_write error");
 			disconnect();
 			w = -1;
@@ -367,6 +370,8 @@ void ChromeCast::_read()
 					Json::Value& status = response["status"][0u];
 					if (status.isMember("activeTrackIds"))
 						m_subtitles = status["activeTrackIds"].isValidIndex(0u);
+					m_volume = status["volume"]["level"].asDouble();
+					m_muted = status["volume"]["muted"].asBool();
 					m_player_state = status["playerState"].asString();
 					m_player_current_time = status["currentTime"].asDouble();
 					m_player_current_time_update = time(NULL);
@@ -516,6 +521,25 @@ bool ChromeCast::setSubtitles(bool status)
 		msg["activeTrackIds"][0] = 1;
 	response = send("urn:x-cast:com.google.cast.media", msg);
 	return true;
+}
+
+bool ChromeCast::setVolume(double level, bool muted)
+{
+	if (!m_init && !init())
+		return false;
+	Json::Value msg, response, volume;
+	msg["type"] = "SET_VOLUME";
+	msg["requestId"] = _request_id();
+	volume["level"] = level;
+	volume["muted"] = muted;
+	msg["volume"] = volume;
+	response = send("urn:x-cast:com.google.cast.media", msg);
+	return true;
+}
+
+double ChromeCast::getVolume() const
+{
+	return m_volume;
 }
 
 void ChromeCast::setSubtitleSettings(bool status)

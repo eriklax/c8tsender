@@ -159,6 +159,8 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 			return GET_playlist_repeatall(connection, strcmp(url + 20, "1") == 0);
 		if (strncmp(url, "/playlist/shuffle/", 18) == 0)
 			return GET_playlist_shuffle(connection, strcmp(url + 18, "1") == 0);
+		if (strncmp(url, "/volume/", 8) == 0)
+			return GET_volume(connection, strtod(url + 8, NULL));
 		if (strncmp(url, "/stream/", 8) == 0) {
 			std::string uuid = url + 8;
 			time_t startTime = 0;
@@ -336,6 +338,13 @@ int Webserver::GET_subtitles(struct MHD_Connection* connection, bool value)
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
+int Webserver::GET_volume(struct MHD_Connection* connection, size_t volume)
+{
+	if (!m_sender.setVolume(volume))
+		return mhd_queue_json(connection, 500, Json::Value());
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
+}
+
 int Webserver::GET_play(struct MHD_Connection* connection, const std::string& uuid, time_t startTime)
 {
 	std::string name;
@@ -452,6 +461,7 @@ int Webserver::GET_stream(struct MHD_Connection* connection, const std::string& 
 //	cbuf.push_back("-scodec"); cbuf.push_back("webvtt");
 	cbuf.push_back("-strict"); cbuf.push_back("-2");
 	cbuf.push_back("-f"); cbuf.push_back("matroska");
+//	cbuf.push_back("-aspect"); cbuf.push_back("16:9");
 	cbuf.push_back("-");
 	cbuf.push_back(0);
 
@@ -570,6 +580,7 @@ int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 	json["currenttime"] = m_seek + m_sender.getPlayerCurrentTime();
 	json["subtitles"] = m_sender.hasSubtitles();
 	json["playlist"] = m_playlist.getUUID();
+	json["volume"] = m_sender.getVolume();
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 
