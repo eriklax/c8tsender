@@ -181,7 +181,7 @@ void ChromeCast::disconnect()
 	m_init = false;
 }
 
-Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& payload)
+Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& payload, const std::string& destination_id)
 {
 	Json::FastWriter fw;
 	fw.omitEndingLineFeed();
@@ -191,7 +191,7 @@ Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& p
 	msg.set_protocol_version(msg.CASTV2_1_0);
 	msg.set_namespace_(namespace_);
 	msg.set_source_id(m_source_id);
-	msg.set_destination_id(m_destination_id);
+	msg.set_destination_id(destination_id.empty() ? m_destination_id : destination_id);
 	msg.set_payload_utf8(fw.write(payload));
 
 	std::string data, foo;
@@ -225,11 +225,11 @@ Json::Value ChromeCast::send(const std::string& namespace_, const Json::Value& p
 	m_ssl_mutex.lock();
 	if (m_ssl) {
 		OSStatus s = SSLWrite(m_ssl, foo.c_str(), foo.size(), &w);
-		if (s) {
-			syslog(LOG_DEBUG, "SSL_write error");
-			disconnect();
-			w = -1;
-		}
+	//	if (s) {
+	//		syslog(LOG_DEBUG, "SSL_write error");
+	//		disconnect();
+	//		w = -1;
+	//	}
 	} else
 		w = -1;
 	m_ssl_mutex.unlock();
@@ -279,12 +279,12 @@ void ChromeCast::_read()
 
 		std::string buf;
 		while (buf.size() < len) {
-			char b[2048];
+			char b;
 			size_t r;
-			SSLRead(m_ssl, b, sizeof b, &r);
+			SSLRead(m_ssl, &b, 1, &r);
 			if (r < 1)
 				break;
-			buf.append(b, r);
+			buf.append(&b, r);
 		}
 		if (buf.size() != len) {
 			syslog(LOG_ERR, "SSL_read error");
@@ -385,6 +385,16 @@ void ChromeCast::_read()
 								status["idleReason"].asString(),
 								uuid);
 				}
+			}
+		}
+
+		if (msg.namespace_() == "urn:x-cast:com.google.cast.receiver")
+		{
+			if (response["type"].asString() == "RECEIVER_STATUS")
+			{
+				Json::Value& status = response["status"];
+				m_volume = status["volume"]["level"].asDouble();
+				m_muted = status["volume"]["muted"].asBool();
 			}
 		}
 	}
@@ -523,7 +533,7 @@ bool ChromeCast::setSubtitles(bool status)
 	return true;
 }
 
-bool ChromeCast::setVolume(double level, bool muted)
+bool ChromeCast::setVolume(double level)
 {
 	if (!m_init && !init())
 		return false;
@@ -531,15 +541,32 @@ bool ChromeCast::setVolume(double level, bool muted)
 	msg["type"] = "SET_VOLUME";
 	msg["requestId"] = _request_id();
 	volume["level"] = level;
+	msg["volume"] = volume;
+	response = send("urn:x-cast:com.google.cast.receiver", msg, "receiver-0");
+	return true;
+}
+
+bool ChromeCast::setMuted(bool muted)
+{
+	if (!m_init && !init())
+		return false;
+	Json::Value msg, response, volume;
+	msg["type"] = "SET_VOLUME";
+	msg["requestId"] = _request_id();
 	volume["muted"] = muted;
 	msg["volume"] = volume;
-	response = send("urn:x-cast:com.google.cast.media", msg);
+	response = send("urn:x-cast:com.google.cast.receiver", msg, "receiver-0");
 	return true;
 }
 
 double ChromeCast::getVolume() const
 {
 	return m_volume;
+}
+
+bool ChromeCast::getMuted() const
+{
+	return m_muted;
 }
 
 void ChromeCast::setSubtitleSettings(bool status)

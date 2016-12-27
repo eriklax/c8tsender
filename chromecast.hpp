@@ -20,8 +20,10 @@ class ChromeCast {
 		bool pause();
 		bool stop();
 		bool setSubtitles(bool status);
-		bool setVolume(double level, bool muted = false);
+		bool setVolume(double level);
+		bool setMuted(bool muted);
 		double getVolume() const;
+		bool getMuted() const;
 		void setSubtitleSettings(bool status);
 
 		const std::string& getUUID() const;
@@ -33,7 +35,7 @@ class ChromeCast {
 		bool connect();
 		void disconnect();
 
-		Json::Value send(const std::string& namespace_, const Json::Value& payload);
+		Json::Value send(const std::string& namespace_, const Json::Value& payload, const std::string& destination_id = "");
 		void _read();
 		void _release_waiters();
 

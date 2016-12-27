@@ -161,6 +161,8 @@ int Webserver::REST_API(struct MHD_Connection* connection,
 			return GET_playlist_shuffle(connection, strcmp(url + 18, "1") == 0);
 		if (strncmp(url, "/volume/", 8) == 0)
 			return GET_volume(connection, strtod(url + 8, NULL));
+		if (strncmp(url, "/muted/", 7) == 0)
+			return GET_muted(connection, strcmp(url + 7, "1") == 0);
 		if (strncmp(url, "/stream/", 8) == 0) {
 			std::string uuid = url + 8;
 			time_t startTime = 0;
@@ -338,9 +340,16 @@ int Webserver::GET_subtitles(struct MHD_Connection* connection, bool value)
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
 
-int Webserver::GET_volume(struct MHD_Connection* connection, size_t volume)
+int Webserver::GET_volume(struct MHD_Connection* connection, double volume)
 {
 	if (!m_sender.setVolume(volume))
+		return mhd_queue_json(connection, 500, Json::Value());
+	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
+}
+
+int Webserver::GET_muted(struct MHD_Connection* connection, bool value)
+{
+	if (!m_sender.setMuted(value))
 		return mhd_queue_json(connection, 500, Json::Value());
 	return mhd_queue_json(connection, MHD_HTTP_OK, Json::Value());
 }
@@ -581,6 +590,7 @@ int Webserver::GET_streaminfo(struct MHD_Connection* connection)
 	json["subtitles"] = m_sender.hasSubtitles();
 	json["playlist"] = m_playlist.getUUID();
 	json["volume"] = m_sender.getVolume();
+	json["muted"] = m_sender.getMuted();
 	return mhd_queue_json(connection, MHD_HTTP_OK, json);
 }
 

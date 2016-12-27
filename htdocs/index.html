@@ -75,8 +75,6 @@
 				})
 				.done(function (playlist) {
 					$('#playlist').empty();
-					if (playlist.shuffle) $("#shuffle").addClass('btn-success');
-						else $("#shuffle").removeClass('btn-success');
 					if (playlist.repeat) $("#repeat").addClass('btn-success');
 						else $("#repeat").removeClass('btn-success');
 					if (playlist.repeatall) $("#repeatall").addClass('btn-success');
@@ -168,11 +166,13 @@
 					url: '/streaminfo'
 				})
 				.done(function (obj) {
-					$("#volume").val(obj.volume);
+					$("#volume").val(obj.volume * 100);
 					if (obj.subtitles)
 						$("#cc").addClass('btn-success');
 					else
 						$("#cc").removeClass('btn-success');
+					if (obj.muted) $("#muted").addClass('btn-success');
+						else $("#muted").removeClass('btn-success');
 					if (obj.playerstate == 'PLAYING' || obj.playerstate == 'BUFFERING') {
 						$("#resume").removeClass('btn-primary');
 						$("#pause").addClass('btn-primary');
@@ -226,6 +226,10 @@
 					$.ajax({ dataType: 'json', url: '/playlist/shuffle/' + ($(this).hasClass('btn-success')?'0':'1') })
 					$(this).toggleClass('btn-success');
 				});
+				$('#muted').on('click', function() {
+					$.ajax({ dataType: 'json', url: '/muted/' + ($(this).hasClass('btn-success')?'0':'1') })
+					$(this).toggleClass('btn-success');
+				});
 				$('#repeat').on('click', function() {
 					$.ajax({ dataType: 'json', url: '/playlist/repeat/' + ($(this).hasClass('btn-success')?'0':'1') })
 					$(this).toggleClass('btn-success');
@@ -251,7 +255,7 @@
 					});
 				});
 				$("#volume").on('change', function() {
-					$.ajax({ dataType: 'json', url: '/volume/' + $(this).val() });
+					$.ajax({ dataType: 'json', url: '/volume/' + ($(this).val() / 100) });
 				});
 			});
 		</script>
@@ -269,7 +273,12 @@
 				<div class="btn-group">
 					<button type="button" class="glyphicon glyphicon-step-forward btn btn-sm" id="next" title="Next"></button>
 				</div>
-				<input type="text" id="volume">
+				<div class="btn-group">
+					<input type="range" id="volume" min="0" max="100" style="width:100px;">
+				</div>
+				<div class="btn-group">
+					<button type="button" class="glyphicon glyphicon-volume-off btn btn-xs" id="muted" title="Muted"></button>
+				</div>
 				<div class="btn-group hidden-xs" style="padding-left: 10px;">
 					<span id="currenttime"></span>
 				</div>
