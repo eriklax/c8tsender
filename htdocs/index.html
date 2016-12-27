@@ -263,32 +263,39 @@
 	<body>
 		<div class="navbar navbar-default navbar-fixed-top">
 			<div class="container">
-			<p>
-				<div class="btn-group">
-					<button type="button" class="glyphicon glyphicon-play btn btn-sm" id="resume" title="Resume"></button>
-					<button type="button" class="glyphicon glyphicon-pause btn btn-sm" id="pause" title="Pause"></button>
-					<button type="button" class="glyphicon glyphicon-forward btn btn-sm" id="seek" title="Seek"></button>
-					<button type="button" class="glyphicon glyphicon-stop btn btn-sm" id="stop" title="Stop"></button>
+				<div class="btn-toolbar" style="padding:10px;">
+					<div class="btn-group">
+						<button type="button" class="glyphicon glyphicon-play btn btn-sm" id="resume" title="Resume"></button>
+						<button type="button" class="glyphicon glyphicon-pause btn btn-sm" id="pause" title="Pause"></button>
+						<button type="button" class="glyphicon glyphicon-forward btn btn-sm" id="seek" title="Seek"></button>
+						<button type="button" class="glyphicon glyphicon-stop btn btn-sm" id="stop" title="Stop"></button>
+					</div>
+					<div class="btn-group">
+						<button type="button" class="glyphicon glyphicon-step-forward btn btn-sm" id="next" title="Next"></button>
+					</div>
+					<div class="btn-group">
+						<button type="button" class="glyphicon glyphicon-volume-up btn btn-sm" data-toggle="collapse" data-target="#volume"></button>
+					</div>
+					<div class="btn-group hidden-xs" style="padding-left: 10px;">
+						<span id="currenttime"></span>
+					</div>
+					<div class="btn-group pull-right">
+						<button type="button" class="glyphicon glyphicon-subtitles btn btn-xs" id="cc" title="Subtitles"></button>
+						<button type="button" class="glyphicon glyphicon-random btn btn-xs" id="shuffle" title="Shuffle"></button>
+						<button type="button" class="glyphicon glyphicon-repeat btn btn-xs" id="repeat" title="Repeat"></button>
+						<button type="button" class="glyphicon glyphicon-retweet btn btn-xs" id="repeatall" title="Repeat all"></button>
+					</div>
 				</div>
-				<div class="btn-group">
-					<button type="button" class="glyphicon glyphicon-step-forward btn btn-sm" id="next" title="Next"></button>
+				<div class="collapse" id="volume">
+					<div class="row" style="padding:10px;">
+						<div class="col-xs-6">
+							<input type="range" id="volume" min="0" max="100" class="form-control">
+						</div>
+						<div class="col-xs-6">
+							<button type="button" class="pull-right glyphicon glyphicon-volume-off btn" id="muted" title="Muted"></button>
+						</div>
+					</div>
 				</div>
-				<div class="btn-group">
-					<input type="range" id="volume" min="0" max="100" style="width:100px;">
-				</div>
-				<div class="btn-group">
-					<button type="button" class="glyphicon glyphicon-volume-off btn btn-xs" id="muted" title="Muted"></button>
-				</div>
-				<div class="btn-group hidden-xs" style="padding-left: 10px;">
-					<span id="currenttime"></span>
-				</div>
-				<div class="btn-group pull-right">
-					<button type="button" class="glyphicon glyphicon-subtitles btn btn-xs" id="cc" title="Subtitles"></button>
-					<button type="button" class="glyphicon glyphicon-random btn btn-xs" id="shuffle" title="Shuffle"></button>
-					<button type="button" class="glyphicon glyphicon-repeat btn btn-xs" id="repeat" title="Repeat"></button>
-					<button type="button" class="glyphicon glyphicon-retweet btn btn-xs" id="repeatall" title="Repeat all"></button>
-				</div>
-			</p>
 			</div>
 		</div>
 		<div class="container">
