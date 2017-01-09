@@ -264,11 +264,14 @@ void ChromeCast::_read()
 		{
 			size_t buf;
 			SSLRead(m_ssl, pktlen + r, 1, &buf);
+			if (r == 0)
+				m_ssl_mutex.lock();
 			if (buf < 1)
 				break;
 		}
 		if (r != sizeof pktlen) {
 			syslog(LOG_ERR, "SSL_read error");
+			m_ssl_mutex.unlock();
 			_release_waiters();
 			return;
 		}
@@ -288,10 +291,12 @@ void ChromeCast::_read()
 		}
 		if (buf.size() != len) {
 			syslog(LOG_ERR, "SSL_read error");
+			m_ssl_mutex.unlock();
 			_release_waiters();
 			return;
 		}
 
+		m_ssl_mutex.unlock();
 		extensions::core_api::cast_channel::CastMessage msg;
 		msg.ParseFromString(buf);
 
